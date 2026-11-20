@@ -1,0 +1,2048 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>สแกนบาร์โค้ดเช็กโภชนาการขนม | Open Food Facts</title>
+
+  <!-- Google Fonts: Prompt (ภาษาไทยอ่านง่าย น่ารัก ทันสมัย) & JetBrains Mono (ตัวเลขและบาร์โค้ดคมชัด) -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- Html5-QRCode Barcode Scanner Library -->
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Prompt', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            pastel: {
+              mint: '#ECFDF5',
+              mintDark: '#10B981',
+              cream: '#FFFBEB',
+              peach: '#FFF1F2',
+              sky: '#F0F9FF',
+              lavender: '#F5F3FF',
+            }
+          },
+          boxShadow: {
+            'soft': '0 10px 30px -5px rgba(16, 185, 129, 0.08), 0 4px 12px -2px rgba(15, 23, 42, 0.04)',
+            'card': '0 12px 32px -8px rgba(15, 23, 42, 0.07)',
+            'glow': '0 0 24px rgba(16, 185, 129, 0.25)',
+          }
+        }
+      }
+    };
+  </script>
+
+  <style>
+    /* ตั้งค่าฟอนต์หลักและพื้นหลังพาสเทลละมุน */
+    body {
+      font-family: 'Prompt', sans-serif;
+      background: linear-gradient(135deg, #F0FDF4 0%, #FFFBEB 48%, #F0F9FF 100%);
+      min-height: 100vh;
+      color: #1E293B;
+      overflow-x: hidden;
+    }
+
+    .font-mono-num {
+      font-family: 'JetBrains Mono', monospace;
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* Soft Glassmorphism Card */
+    .glass-card {
+      background: rgba(255, 255, 255, 0.86);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid rgba(255, 255, 255, 0.9);
+    }
+
+    /* อนิเมชันลอยตัวนุ่มนวลสำหรับตัวการ์ตูน */
+    @keyframes floatSoft {
+      0%, 100% { transform: translateY(0px) rotate(0deg); }
+      50% { transform: translateY(-7px) rotate(1.5deg); }
+    }
+
+    @keyframes bounceHappy {
+      0%, 100% { transform: translateY(0) scale(1); }
+      40% { transform: translateY(-12px) scale(1.04); }
+      60% { transform: translateY(-4px) scale(0.98); }
+    }
+
+    @keyframes wiggleGentle {
+      0%, 100% { transform: rotate(-3deg); }
+      50% { transform: rotate(3deg); }
+    }
+
+    @keyframes laserSweep {
+      0% { top: 12%; opacity: 0.4; }
+      50% { top: 85%; opacity: 1; }
+      100% { top: 12%; opacity: 0.4; }
+    }
+
+    .animate-float {
+      animation: floatSoft 3.6s ease-in-out infinite;
+    }
+
+    .animate-happy {
+      animation: bounceHappy 1.8s ease-in-out infinite;
+    }
+
+    .animate-wiggle {
+      animation: wiggleGentle 2.4s ease-in-out infinite;
+    }
+
+    .scanner-laser {
+      animation: laserSweep 2.2s ease-in-out infinite;
+    }
+
+    /* ปรับแต่งกล่องกล้อง Html5Qrcode */
+    #reader video {
+      border-radius: 1.25rem !important;
+      object-fit: cover !important;
+      width: 100% !important;
+    }
+
+    #reader__scan_region {
+      border-radius: 1.25rem !important;
+      overflow: hidden;
+    }
+
+    /* Custom Scrollbar สำหรับตารางและ JSON */
+    ::-webkit-scrollbar {
+      width: 7px;
+      height: 7px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(241, 245, 249, 0.7);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.5);
+      border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(100, 116, 139, 0.7);
+    }
+  </style>
+</head>
+<body class="relative antialiased selection:bg-emerald-200 selection:text-emerald-900">
+
+  <!-- วงกลมตกแต่งพื้นหลังสไตล์พาสเทล -->
+  <div class="fixed inset-0 pointer-events-none overflow-hidden -z-10">
+    <div class="absolute -top-24 -left-24 w-80 h-80 bg-emerald-200/40 rounded-full blur-3xl"></div>
+    <div class="absolute top-1/3 -right-24 w-96 h-96 bg-amber-200/35 rounded-full blur-3xl"></div>
+    <div class="absolute -bottom-24 left-1/4 w-96 h-96 bg-sky-200/40 rounded-full blur-3xl"></div>
+  </div>
+
+  <!-- Toast แจ้งเตือนแบบนุ่มนวล (แทน alert()) -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 max-w-sm w-full px-4 sm:px-0 pointer-events-none"></div>
+
+  <!-- แถบแจ้งเตือนอัตโนมัติเมื่อเปิดผ่าน In-App Browser (LINE / Facebook) หรือ HTTP ไม่ปลอดภัย -->
+  <div id="envWarningBanner" class="hidden bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 text-white shadow-lg">
+    <div class="max-w-5xl mx-auto px-4 py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+      <div class="flex items-start gap-3">
+        <div class="p-2 bg-white/20 rounded-2xl shrink-0 mt-0.5">
+          <i data-lucide="alert-triangle" class="w-5 h-5"></i>
+        </div>
+        <div class="text-xs sm:text-sm leading-relaxed">
+          <p id="envWarningTitle" class="font-bold">ตรวจพบข้อจำกัดของเบราว์เซอร์สำหรับการใช้กล้อง</p>
+          <p id="envWarningDesc" class="text-white/95">กรุณาเปิดลิงก์นี้ผ่านเบราว์เซอร์หลัก (เช่น Chrome หรือ Safari) บนระบบ HTTPS เพื่อให้เปิดกล้องสแกนบาร์โค้ดได้</p>
+        </div>
+      </div>
+      <button onclick="copyCurrentUrl()" class="shrink-0 inline-flex items-center gap-1.5 bg-white text-orange-600 hover:bg-orange-50 font-semibold text-xs px-3.5 py-2 rounded-xl shadow transition active:scale-95">
+        <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+        <span>คัดลอกลิงก์</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ส่วนหัวของเว็บแอปพลิเคชัน -->
+  <header class="sticky top-0 z-30 glass-card border-b border-emerald-100/80 shadow-sm">
+    <div class="max-w-5xl mx-auto px-4 py-3.5 flex items-center justify-between gap-3">
+      <div class="flex items-center gap-3">
+        <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-emerald-400 to-teal-500 flex items-center justify-center text-white shadow-md shadow-emerald-200 shrink-0">
+          <i data-lucide="scan-barcode" class="w-6 h-6"></i>
+        </div>
+        <div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <h1 class="text-base sm:text-xl font-bold bg-gradient-to-r from-emerald-700 via-teal-700 to-sky-700 bg-clip-text text-transparent">
+              สแกนบาร์โค้ดเช็กโภชนาการขนม
+            </h1>
+            <span class="text-[11px] font-semibold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
+              Open Food Facts
+            </span>
+          </div>
+          <p class="text-xs text-slate-500 hidden sm:block">
+            ผู้ช่วยการ์ตูนอ่านฉลากโภชนาการอัจฉริยะ วิเคราะห์น้ำตาล ไขมัน และโซเดียมในพริบตา
+          </p>
+        </div>
+      </div>
+
+      <a href="#cartoonGangSection" class="inline-flex items-center gap-1.5 text-xs sm:text-sm font-semibold px-3.5 py-2 rounded-2xl bg-amber-100/90 hover:bg-amber-200/80 text-amber-800 border border-amber-200 transition shadow-sm shrink-0">
+        <span>🎨 แก๊งการ์ตูน</span>
+      </a>
+    </div>
+  </header>
+
+  <!-- เนื้อหาหลัก -->
+  <main class="max-w-5xl mx-auto px-4 py-6 sm:py-8 space-y-6 sm:space-y-8">
+
+    <!-- 1. เวทีมาสคอตหลัก "น้องกู๊ดดี้ (Nong Goody)" พร้อมกล่องคำพูดโต้ตอบได้ -->
+    <section id="goodyHeroCard" class="glass-card rounded-3xl p-5 sm:p-6 shadow-soft border border-emerald-100 transition-all duration-500">
+      <div class="flex flex-col md:flex-row items-center gap-5">
+        <!-- ตัวการ์ตูน น้องกู๊ดดี้ (อัปเดต SVG อัตโนมัติตามสถานะ) -->
+        <div class="relative shrink-0 flex flex-col items-center">
+          <div id="goodyAvatarWrapper" class="w-32 h-32 sm:w-36 sm:h-36 rounded-3xl bg-gradient-to-b from-emerald-50 to-teal-100/70 border-2 border-emerald-200/80 flex items-center justify-center p-2 shadow-inner cursor-pointer transition-transform hover:scale-105" onclick="triggerRandomGoodyTip()" title="คลิกเพื่อคุยกับน้องกู๊ดดี้!">
+            <!-- SVG น้องกู๊ดดี้จะถูก Render ที่นี่ -->
+          </div>
+          <span id="goodyStateBadge" class="mt-2 inline-flex items-center gap-1 text-[11px] font-semibold px-3 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
+            ✨ น้องกู๊ดดี้พร้อมช่วยแล้ว!
+          </span>
+        </div>
+
+        <!-- กล่องคำพูด (Speech Bubble) ของน้องกู๊ดดี้ -->
+        <div class="flex-1 w-full">
+          <div id="goodySpeechBox" class="relative bg-white/95 rounded-3xl p-4 sm:p-5 border-2 border-emerald-100 shadow-sm transition-colors duration-300">
+            <div class="flex items-center justify-between gap-2 mb-1.5">
+              <div class="flex items-center gap-2">
+                <span class="font-bold text-emerald-700 text-sm sm:text-base">เชฟน้องกู๊ดดี้ (Nong Goody)</span>
+                <span class="text-xs text-slate-400">• ผู้เชี่ยวชาญฉลากขนม</span>
+              </div>
+              <button onclick="triggerRandomGoodyTip()" class="text-xs font-medium text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1 rounded-xl transition inline-flex items-center gap-1">
+                <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                <span>ขอเคล็ดลับ</span>
+              </button>
+            </div>
+            <p id="goodySpeechText" class="text-sm sm:text-base text-slate-700 leading-relaxed">
+              สวัสดีครับ! ผมชื่อ <strong>น้องกู๊ดดี้</strong> 🥦👨‍🍳 กดปุ่ม <strong>“เปิดกล้องสแกน”</strong> เพื่อส่องบาร์โค้ดบนซองขนม หรือลองกดปุ่มขนมตัวอย่างด้านล่างให้ผมช่วยตรวจสารอาหารได้เลยครับ!
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- 2. ส่วนสแกนบาร์โค้ด & ค้นหาสินค้า -->
+    <section class="glass-card rounded-3xl p-5 sm:p-7 shadow-card border border-white space-y-5">
+      <!-- กล่องพับเก็บได้: ข้อควรระวังก่อนเปิดกล้องสแกน -->
+      <div class="rounded-2xl bg-amber-50/90 border border-amber-200/80 overflow-hidden">
+        <button type="button" onclick="togglePrecautions()" class="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-amber-100/50 transition">
+          <div class="flex items-center gap-2.5">
+            <span class="w-7 h-7 rounded-xl bg-amber-200/80 text-amber-800 flex items-center justify-center shrink-0">
+              <i data-lucide="info" class="w-4 h-4"></i>
+            </span>
+            <span class="text-xs sm:text-sm font-semibold text-amber-900">
+              ข้อควรระวังก่อนเปิดกล้องสแกน (HTTPS / เบราว์เซอร์ / มือถือ)
+            </span>
+          </div>
+          <i id="precautionChevron" data-lucide="chevron-down" class="w-4 h-4 text-amber-700 transition-transform duration-200"></i>
+        </button>
+        <div id="precautionBody" class="hidden px-4 pb-4 pt-1 text-xs sm:text-sm text-amber-900/90 border-t border-amber-200/60 space-y-2">
+          <ul class="list-disc list-inside space-y-1.5 leading-relaxed">
+            <li><strong>ต้องรันบน HTTPS หรือ localhost:</strong> เบราว์เซอร์จะอนุญาตให้เปิดกล้องเฉพาะเว็บไซต์ที่ปลอดภัย (HTTPS) เท่านั้น</li>
+            <li><strong>หลีกเลี่ยงการเปิดใน LINE หรือ Facebook:</strong> In-App Browser มักบล็อกการเข้าถึงกล้อง แนะนำให้กดจุด 3 จุดแล้วเลือก <em>“เปิดในเบราว์เซอร์เริ่มต้น (Chrome / Safari)”</em></li>
+            <li><strong>แนะนำใช้กล้องหลังมือถือในที่สว่าง:</strong> ถือซองขนมให้บาร์โค้ดขนานกับกรอบเล็ง ห่างประมาณ 10–15 ซม. เพื่อให้โฟกัสคมชัด</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- โซนกล้องสแกนบาร์โค้ด -->
+      <div class="space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div>
+            <h2 class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
+              <i data-lucide="camera" class="w-5 h-5 text-emerald-600"></i>
+              <span>สแกนบาร์โค้ดด้วยกล้อง</span>
+            </h2>
+            <p class="text-xs text-slate-500">รองรับ EAN-13, EAN-8, UPC-A, UPC-E และ CODE-128</p>
+          </div>
+
+          <!-- ตัวเลือกสลับกล้องหน้า/หลัง และปุ่มเปิด/ปิดกล้อง -->
+          <div class="flex flex-wrap items-center gap-2">
+            <select id="cameraSelect" aria-label="เลือกกล้อง" class="hidden text-xs sm:text-sm bg-white border border-slate-200 rounded-2xl px-3 py-2.5 text-slate-700 font-medium focus:outline-none focus:ring-2 focus:ring-emerald-400">
+              <option value="">กำลังค้นหากล้อง...</option>
+            </select>
+
+            <button id="startScanBtn" type="button" onclick="startScanner()" class="inline-flex items-center gap-2 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white font-semibold text-xs sm:text-sm px-4 py-2.5 rounded-2xl shadow-md shadow-emerald-200 transition active:scale-95">
+              <i data-lucide="video" class="w-4 h-4"></i>
+              <span>เปิดกล้องสแกน</span>
+            </button>
+
+            <button id="stopScanBtn" type="button" onclick="stopScanner()" class="hidden inline-flex items-center gap-2 bg-rose-500 hover:bg-rose-600 text-white font-semibold text-xs sm:text-sm px-4 py-2.5 rounded-2xl shadow-md shadow-rose-200 transition active:scale-95">
+              <i data-lucide="video-off" class="w-4 h-4"></i>
+              <span>ปิดกล้อง</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- กรอบแสดงภาพกล้องสแกนพร้อมกรอบเล็ง 4 มุมและเส้นเลเซอร์ -->
+        <div id="scannerContainer" class="hidden relative rounded-3xl overflow-hidden bg-slate-900 border-2 border-emerald-300 shadow-inner max-w-xl mx-auto">
+          <div id="reader" class="w-full min-h-[260px]"></div>
+
+          <!-- กรอบเล็ง 4 มุม + เส้นเลเซอร์สแกน -->
+          <div class="pointer-events-none absolute inset-0 flex items-center justify-center p-8">
+            <div class="relative w-full max-w-xs h-36">
+              <!-- มุมบนซ้าย -->
+              <span class="absolute top-0 left-0 w-7 h-7 border-t-4 border-l-4 border-emerald-400 rounded-tl-xl"></span>
+              <!-- มุมบนขวา -->
+              <span class="absolute top-0 right-0 w-7 h-7 border-t-4 border-r-4 border-emerald-400 rounded-tr-xl"></span>
+              <!-- มุมล่างซ้าย -->
+              <span class="absolute bottom-0 left-0 w-7 h-7 border-b-4 border-l-4 border-emerald-400 rounded-bl-xl"></span>
+              <!-- มุมล่างขวา -->
+              <span class="absolute bottom-0 right-0 w-7 h-7 border-b-4 border-r-4 border-emerald-400 rounded-br-xl"></span>
+              <!-- เส้นเลเซอร์ -->
+              <div class="scanner-laser absolute left-2 right-2 h-0.5 bg-gradient-to-r from-transparent via-rose-400 to-transparent shadow-[0_0_8px_#fb7185]"></div>
+            </div>
+          </div>
+
+          <div class="bg-slate-900/90 text-emerald-300 text-xs text-center py-2 px-3 font-medium">
+            วางบาร์โค้ดให้อยู่ภายในกรอบสี่เหลี่ยม ระบบจะตรวจจับอัตโนมัติ
+          </div>
+        </div>
+
+        <!-- แจ้งเตือนสถานะกล้องหากมีข้อผิดพลาด -->
+        <div id="cameraErrorBox" class="hidden rounded-2xl bg-rose-50 border border-rose-200 p-3.5 text-xs sm:text-sm text-rose-700 flex items-start gap-2.5">
+          <i data-lucide="camera-off" class="w-5 h-5 shrink-0 mt-0.5 text-rose-500"></i>
+          <div>
+            <p class="font-semibold">ไม่สามารถเปิดกล้องได้</p>
+            <p id="cameraErrorMsg" class="text-rose-600 mt-0.5">กรุณาตรวจสอบสิทธิ์การใช้กล้อง หรือกรอกเลขบาร์โค้ดด้านล่างแทนครับ</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- เส้นคั่น -->
+      <div class="relative flex items-center py-1">
+        <div class="flex-grow border-t border-slate-200"></div>
+        <span class="shrink mx-3 text-xs font-medium text-slate-400">หรือกรอกเลขบาร์โค้ดด้วยตนเอง</span>
+        <div class="flex-grow border-t border-slate-200"></div>
+      </div>
+
+      <!-- ช่องกรอกเลขบาร์โค้ดด้วยตนเอง + ปุ่มขนมตัวอย่าง -->
+      <div class="space-y-4">
+        <form onsubmit="handleManualSubmit(event)" class="flex flex-col sm:flex-row gap-2.5">
+          <div class="relative flex-1">
+            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+              <i data-lucide="barcode" class="w-5 h-5"></i>
+            </div>
+            <input
+              id="barcodeInput"
+              type="text"
+              inputmode="numeric"
+              placeholder="กรอกเลขบาร์โค้ด 8–13 หลัก เช่น 8851019030180"
+              class="w-full font-mono-num pl-11 pr-10 py-3 rounded-2xl bg-white border border-slate-200 text-sm sm:text-base text-slate-800 placeholder:font-sans placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:border-emerald-400 transition"
+            />
+            <button type="button" onclick="clearBarcodeInput()" title="ล้างค่า" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-slate-600">
+              <i data-lucide="x-circle" class="w-4 h-4"></i>
+            </button>
+          </div>
+
+          <button type="submit" class="inline-flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white font-semibold text-sm px-6 py-3 rounded-2xl shadow-sm transition active:scale-95 shrink-0">
+            <i data-lucide="search" class="w-4 h-4"></i>
+            <span>ค้นหาข้อมูล</span>
+          </button>
+        </form>
+
+        <!-- ปุ่มทดลองบาร์โค้ดตัวอย่าง 3 รายการ -->
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="text-xs font-semibold text-slate-500 mr-1">ทดลองบาร์โค้ดตัวอย่าง:</span>
+
+          <button type="button" onclick="lookupProduct('3017620422003')" class="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-2xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-200/80 transition active:scale-95">
+            <span>🍫 Nutella</span>
+            <span class="font-mono-num text-[11px] text-amber-700/80">(3017620422003)</span>
+          </button>
+
+          <button type="button" onclick="lookupProduct('8851019030180')" class="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-2xl bg-yellow-50 hover:bg-yellow-100 text-yellow-900 border border-yellow-200/80 transition active:scale-95">
+            <span>🥔 Lay's ไทย</span>
+            <span class="font-mono-num text-[11px] text-yellow-700/80">(8851019030180)</span>
+          </button>
+
+          <button type="button" onclick="lookupProduct('8850124003850')" class="inline-flex items-center gap-1.5 text-xs font-medium px-3 py-2 rounded-2xl bg-sky-50 hover:bg-sky-100 text-sky-900 border border-sky-200/80 transition active:scale-95">
+            <span>🥛 นมไทย-เดนมาร์ค</span>
+            <span class="font-mono-num text-[11px] text-sky-700/80">(8850124003850)</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. โซนผลลัพธ์การวิเคราะห์โภชนาการ (แสดงเมื่อสแกนหรือค้นหาสำเร็จ) -->
+    <section id="resultsSection" class="hidden space-y-6">
+
+      <!-- 3.1 การ์ดข้อมูลสินค้า & ปุ่มสลับฐานข้อมูล 100g / Serving -->
+      <div class="glass-card rounded-3xl p-5 sm:p-7 shadow-card border border-white">
+        <div class="flex flex-col md:flex-row gap-6 items-start">
+          <!-- รูปสินค้า -->
+          <div class="w-full md:w-44 h-44 rounded-3xl bg-white border border-slate-100 shadow-inner flex items-center justify-center p-3 shrink-0 overflow-hidden mx-auto md:mx-0">
+            <img
+              id="productImage"
+              src="https://placehold.co/300x300/ECFDF5/059669?text=Snack+Item"
+              onerror="this.onerror=null;this.src='https://placehold.co/300x300/ECFDF5/059669?text=No+Image';"
+              alt="รูปภาพสินค้า"
+              class="max-h-full max-w-full object-contain rounded-2xl"
+            />
+          </div>
+
+          <!-- รายละเอียดสินค้า -->
+          <div class="flex-1 w-full space-y-3">
+            <div class="flex flex-wrap items-center gap-2">
+              <span id="productBarcodeBadge" class="font-mono-num text-xs font-semibold px-3 py-1 rounded-full bg-slate-100 text-slate-700 border border-slate-200">
+                #0000000000000
+              </span>
+              <span id="nutriScoreBadge" class="text-xs font-bold px-3 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">
+                Nutri-Score: -
+              </span>
+              <span id="novaGroupBadge" class="text-xs font-semibold px-3 py-1 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+                NOVA: -
+              </span>
+            </div>
+
+            <div>
+              <h2 id="productName" class="text-xl sm:text-2xl font-bold text-slate-800 leading-snug">
+                ชื่อสินค้า
+              </h2>
+              <p id="productBrand" class="text-sm text-slate-500 mt-0.5">
+                ยี่ห้อ: - • ปริมาณสุทธิ: -
+              </p>
+            </div>
+
+            <!-- ปุ่มสลับมุมมองฐานข้อมูล: ต่อ 100g (_100g) vs ต่อหน่วยบริโภค (_serving) -->
+            <div class="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-t border-slate-100">
+              <div class="inline-flex p-1 rounded-2xl bg-slate-100/90 border border-slate-200/70 self-start">
+                <button id="btnBasis100g" type="button" onclick="setNutritionBasis('100g')" class="px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold bg-white text-emerald-700 shadow-sm transition">
+                  ต่อ 100g <span class="font-mono-num text-[11px] opacity-75">(_100g)</span>
+                </button>
+                <button id="btnBasisServing" type="button" onclick="setNutritionBasis('serving')" class="px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold text-slate-600 hover:text-slate-800 transition">
+                  ต่อหน่วยบริโภค <span class="font-mono-num text-[11px] opacity-75">(_serving)</span>
+                </button>
+              </div>
+
+              <div id="servingSizeInfo" class="text-xs text-slate-500 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200/60">
+                ขนาดหนึ่งหน่วยบริโภค: <span class="font-semibold text-slate-700">-</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3.2 กล่องพลังงาน (Energy kcal และ kJ ทศนิยม 3 ตำแหน่ง) -->
+      <div class="glass-card rounded-3xl p-5 sm:p-6 shadow-soft border border-amber-100 bg-gradient-to-r from-amber-50/70 via-white/90 to-orange-50/70">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div class="flex items-center gap-3.5">
+            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-amber-400 to-orange-500 text-white flex items-center justify-center shadow-md shadow-amber-200 shrink-0">
+              <i data-lucide="flame" class="w-6 h-6"></i>
+            </div>
+            <div>
+              <div class="flex items-center gap-2 flex-wrap">
+                <h3 class="font-bold text-slate-800 text-base sm:text-lg">พลังงานทั้งหมด (Energy)</h3>
+                <span id="energySourceBadge" class="text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700">
+                  ฐานข้อมูล Nutriments
+                </span>
+              </div>
+              <p id="energyBasisSubtitle" class="text-xs text-slate-500 mt-0.5">แสดงค่าพลังงานต่อ 100 กรัม (ทศนิยม 3 ตำแหน่ง)</p>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3 sm:min-w-[290px]">
+            <div class="bg-white rounded-2xl p-3 border border-amber-200/70 text-center shadow-sm">
+              <span class="block text-[11px] font-medium text-slate-400">กิโลแคลอรี (kcal)</span>
+              <span id="energyKcalVal" class="font-mono-num text-lg sm:text-xl font-bold text-orange-600">0.000</span>
+              <span class="text-xs text-slate-500">kcal</span>
+            </div>
+            <div class="bg-white rounded-2xl p-3 border border-amber-200/70 text-center shadow-sm">
+              <span class="block text-[11px] font-medium text-slate-400">กิโลจูล (kJ)</span>
+              <span id="energyKjVal" class="font-mono-num text-lg sm:text-xl font-bold text-amber-600">0.000</span>
+              <span class="text-xs text-slate-500">kJ</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3.3 การ์ดไฟจราจร 4 หมวดหลัก พร้อมตัวการ์ตูนประจำหมวดและคำอธิบาย -->
+      <div class="space-y-3">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1">
+          <h3 class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
+            <span>🚦 วิเคราะห์เกณฑ์ไฟจราจร 4 สหายสารอาหาร</span>
+          </h3>
+          <span class="text-xs text-slate-500">ประเมินระดับ เขียว (ต่ำ) • เหลือง (ปานกลาง) • แดง (สูง) ตามมาตรฐาน FSA</span>
+        </div>
+
+        <div id="trafficCardsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- การ์ดทั้ง 4 หมวด (น้ำตาล, ไขมันทั้งหมด, ไขมันอิ่มตัว, เกลือ) จะถูกสร้างผ่าน JavaScript -->
+        </div>
+      </div>
+
+      <!-- 3.4 ข้อมูลโภชนาการหลักเพิ่มเติม (คาร์โบไฮเดรต โปรตีน ใยอาหาร โซเดียม) -->
+      <div class="glass-card rounded-3xl p-5 sm:p-6 shadow-soft border border-white space-y-4">
+        <div class="flex items-center justify-between">
+          <h3 class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
+            <i data-lucide="layers" class="w-5 h-5 text-sky-600"></i>
+            <span>ข้อมูลโภชนาการหลักเพิ่มเติม</span>
+          </h3>
+          <span id="coreNutrientsBasisLabel" class="text-xs font-medium text-slate-500">ต่อ 100g</span>
+        </div>
+
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div class="rounded-2xl bg-sky-50/80 border border-sky-100 p-3.5">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs font-semibold text-sky-900">คาร์โบไฮเดรต</span>
+              <span class="text-[10px] text-sky-600 bg-white px-1.5 py-0.5 rounded-md">Carbs</span>
+            </div>
+            <p class="font-mono-num text-lg font-bold text-sky-700"><span id="carbVal">-</span> <span class="text-xs font-normal">g</span></p>
+            <p id="carbSource" class="text-[10px] text-slate-400 mt-1">-</p>
+          </div>
+
+          <div class="rounded-2xl bg-emerald-50/80 border border-emerald-100 p-3.5">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs font-semibold text-emerald-900">โปรตีน</span>
+              <span class="text-[10px] text-emerald-600 bg-white px-1.5 py-0.5 rounded-md">Protein</span>
+            </div>
+            <p class="font-mono-num text-lg font-bold text-emerald-700"><span id="proteinVal">-</span> <span class="text-xs font-normal">g</span></p>
+            <p id="proteinSource" class="text-[10px] text-slate-400 mt-1">-</p>
+          </div>
+
+          <div class="rounded-2xl bg-teal-50/80 border border-teal-100 p-3.5">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs font-semibold text-teal-900">ใยอาหาร</span>
+              <span class="text-[10px] text-teal-600 bg-white px-1.5 py-0.5 rounded-md">Fiber</span>
+            </div>
+            <p class="font-mono-num text-lg font-bold text-teal-700"><span id="fiberVal">-</span> <span class="text-xs font-normal">g</span></p>
+            <p id="fiberSource" class="text-[10px] text-slate-400 mt-1">-</p>
+          </div>
+
+          <div class="rounded-2xl bg-indigo-50/80 border border-indigo-100 p-3.5">
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-xs font-semibold text-indigo-900">โซเดียม</span>
+              <span class="text-[10px] text-indigo-600 bg-white px-1.5 py-0.5 rounded-md">Sodium</span>
+            </div>
+            <p class="font-mono-num text-lg font-bold text-indigo-700"><span id="sodiumVal">-</span> <span class="text-xs font-normal">g</span></p>
+            <p id="sodiumMgHint" class="font-mono-num text-[10px] text-indigo-500 mt-1">≈ - mg</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3.5 ตาราง Nutrition Facts ทั้งหมด (ทศนิยม 3 ตำแหน่ง) -->
+      <div class="glass-card rounded-3xl p-5 sm:p-6 shadow-soft border border-white space-y-4">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <h3 class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
+            <i data-lucide="table" class="w-5 h-5 text-emerald-600"></i>
+            <span>ตารางข้อมูลโภชนาการทั้งหมด (Nutrition Facts)</span>
+          </h3>
+          <span class="text-xs text-slate-500">แสดงตัวเลขทศนิยม 3 ตำแหน่งครบทุกสารอาหารในฐานข้อมูล</span>
+        </div>
+
+        <div class="overflow-x-auto rounded-2xl border border-slate-200/80">
+          <table class="w-full text-left border-collapse text-xs sm:text-sm">
+            <thead>
+              <tr class="bg-slate-100/90 text-slate-700 border-b border-slate-200">
+                <th class="py-3 px-4 font-semibold">รายการสารอาหาร (Nutrient)</th>
+                <th class="py-3 px-4 font-semibold text-right">ต่อ 100g</th>
+                <th class="py-3 px-4 font-semibold text-right">ต่อหน่วยบริโภค</th>
+                <th class="py-3 px-4 font-semibold text-center">หน่วย</th>
+              </tr>
+            </thead>
+            <tbody id="allNutrientsTableBody" class="divide-y divide-slate-100 bg-white/80">
+              <!-- เติมข้อมูลผ่าน JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- 3.6 กล่องข้อมูลฉลาก / แพ็กเกจ / ส่วนประกอบ (รวมผลสกัดข้อมูลชั้นที่ 2) -->
+      <div class="glass-card rounded-3xl p-5 sm:p-6 shadow-soft border border-white space-y-4">
+        <div class="flex items-center justify-between flex-wrap gap-2">
+          <h3 class="text-base sm:text-lg font-bold text-slate-800 flex items-center gap-2">
+            <i data-lucide="file-text" class="w-5 h-5 text-amber-600"></i>
+            <span>ข้อมูลฉลาก ส่วนประกอบ และแพ็กเกจ</span>
+          </h3>
+          <span id="fallbackBadge" class="text-xs font-medium px-3 py-1 rounded-full bg-slate-100 text-slate-600">
+            ระบบอ่านข้อมูล 2 ชั้นทำงานปกติ
+          </span>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs sm:text-sm">
+          <div class="rounded-2xl bg-slate-50/90 border border-slate-200/70 p-4 space-y-1.5">
+            <p class="font-semibold text-slate-700 flex items-center gap-1.5">
+              <i data-lucide="list" class="w-4 h-4 text-emerald-600"></i>
+              <span>รายการส่วนประกอบ (Ingredients)</span>
+            </p>
+            <p id="ingredientsText" class="text-slate-600 leading-relaxed">ไม่มีข้อมูลส่วนประกอบ</p>
+          </div>
+
+          <div class="rounded-2xl bg-slate-50/90 border border-slate-200/70 p-4 space-y-2.5">
+            <div>
+              <p class="font-semibold text-slate-700">⚠️ ข้อมูลสารก่อภูมิแพ้ (Allergens)</p>
+              <p id="allergensText" class="text-slate-600 mt-0.5">-</p>
+            </div>
+            <div>
+              <p class="font-semibold text-slate-700">🏷️ ฉลาก / หมวดหมู่ / บรรจุภัณฑ์</p>
+              <p id="labelsPackagingText" class="text-slate-600 mt-0.5">-</p>
+            </div>
+            <div id="fallbackExtractedBox" class="hidden pt-2 border-t border-amber-200/80">
+              <p class="font-semibold text-amber-800">🔍 ข้อมูลที่สกัดเสริมจากข้อความฉลาก (Secondary Fallback):</p>
+              <p id="fallbackExtractedText" class="text-amber-700 mt-0.5"></p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3.7 กล่องดู Raw JSON (สลับดูเฉพาะ Nutriments หรือ JSON ทั้งหมด พร้อมปุ่มคัดลอก) -->
+      <div class="glass-card rounded-3xl p-5 sm:p-6 shadow-soft border border-white space-y-3">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div class="flex items-center gap-2">
+            <i data-lucide="code-2" class="w-5 h-5 text-slate-700"></i>
+            <h3 class="text-base font-bold text-slate-800">ข้อมูลดิบจาก API (Raw JSON)</h3>
+          </div>
+
+          <div class="flex flex-wrap items-center gap-2">
+            <div class="inline-flex p-1 rounded-xl bg-slate-100 border border-slate-200">
+              <button id="btnJsonNutriments" type="button" onclick="setJsonViewMode('nutriments')" class="px-3 py-1 rounded-lg text-xs font-semibold bg-white text-slate-800 shadow-sm transition">
+                เฉพาะ Nutriments
+              </button>
+              <button id="btnJsonFull" type="button" onclick="setJsonViewMode('full')" class="px-3 py-1 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-800 transition">
+                JSON ทั้งหมด
+              </button>
+            </div>
+
+            <button type="button" onclick="copyRawJson()" class="inline-flex items-center gap-1.5 text-xs font-semibold px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white shadow-sm transition active:scale-95">
+              <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+              <span>คัดลอก JSON</span>
+            </button>
+          </div>
+        </div>
+
+        <pre id="rawJsonOutput" class="font-mono-num text-xs bg-slate-900 text-emerald-300 p-4 rounded-2xl overflow-x-auto max-h-72 leading-relaxed">{}</pre>
+      </div>
+    </section>
+
+    <!-- 4. ส่วนแนะนำ "รู้จักแก๊งการ์ตูนผู้ช่วยอ่านฉลาก" (คลิกเลือกดูตัวละครแต่ละตัวได้) -->
+    <section id="cartoonGangSection" class="glass-card rounded-3xl p-5 sm:p-7 shadow-card border border-white space-y-5">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+        <div>
+          <h2 class="text-lg sm:text-xl font-bold text-slate-800 flex items-center gap-2">
+            <span>🎨 รู้จักแก๊งการ์ตูนผู้ช่วยอ่านฉลาก</span>
+          </h2>
+          <p class="text-xs sm:text-sm text-slate-500">
+            คลิกที่ตัวการ์ตูนแต่ละตัวเพื่อเรียนรู้หน้าที่ของสารอาหารและวิธีอ่านเกณฑ์ไฟจราจรแบบเข้าใจง่าย!
+          </p>
+        </div>
+
+        <!-- ป้ายสรุปเกณฑ์ไฟจราจร -->
+        <div class="flex items-center gap-1.5 text-[11px] font-semibold">
+          <span class="px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">🟢 ต่ำ = ดีมาก</span>
+          <span class="px-2.5 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-200">🟡 ปานกลาง</span>
+          <span class="px-2.5 py-1 rounded-full bg-rose-100 text-rose-800 border border-rose-200">🔴 สูง = ระวัง</span>
+        </div>
+      </div>
+
+      <!-- ปุ่มเลือกตัวการ์ตูนทั้ง 5 ตัว (น้องกู๊ดดี้ + 4 สหายสารอาหาร) -->
+      <div id="characterTabs" class="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+        <!-- สร้างปุ่มตัวละครผ่าน JS -->
+      </div>
+
+      <!-- กล่องแสดงรายละเอียดของตัวการ์ตูนที่ถูกเลือก -->
+      <div id="characterDetailPanel" class="rounded-3xl bg-gradient-to-br from-white via-emerald-50/40 to-amber-50/40 border border-emerald-100 p-5 sm:p-6 transition-all">
+        <!-- เติมข้อมูลตัวละครผ่าน JS -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ส่วนท้ายเว็บ -->
+  <footer class="max-w-5xl mx-auto px-4 py-6 text-center text-xs text-slate-500 space-y-1">
+    <p>
+      ขับเคลื่อนข้อมูลโภชนาการแบบเปิดจาก <a href="https://world.openfoodfacts.org" target="_blank" rel="noopener noreferrer" class="font-semibold text-emerald-700 hover:underline">Open Food Facts API v2</a> • ออกแบบเพื่อการเรียนรู้และเลือกบริโภคอย่างใส่ใจสุขภาพ
+    </p>
+    <p class="text-[11px] text-slate-400">
+      หมายเหตุ: เกณฑ์ไฟจราจรอ้างอิงมาตรฐาน UK FSA (ต่ออาหาร 100 กรัม) โปรดตรวจสอบฉลากบนบรรจุภัณฑ์จริงควบคู่กันเสมอ
+    </p>
+  </footer>
+
+  <!-- ===================================================================== -->
+  <!-- JAVASCRIPT LOGIC: ตัวการ์ตูน SVG, กล้องสแกน, API v2 และวิเคราะห์สารอาหาร -->
+  <!-- ===================================================================== -->
+  <script>
+    // =========================================================================
+    // 1. คลังตัวการ์ตูน SVG แบบ Inline คมชัด สีสันพาสเทลสดใส
+    // =========================================================================
+
+    /**
+     * สร้าง SVG ของมาสคอตหลัก "น้องกู๊ดดี้ (Nong Goody)" เชฟผักผลไม้สุดน่ารัก
+     * เปลี่ยนสีหน้า ท่าทาง และอุปกรณ์ประกอบตามสถานะ:
+     * 'idle' | 'loading' | 'healthy' | 'moderate' | 'warning' | 'not_found'
+     */
+    function getNongGoodySVG(state = 'idle') {
+      // กำหนดสีหน้าและอุปกรณ์เสริมตามสถานะ
+      let eyesSVG = '';
+      let mouthSVG = '';
+      let propSVG = '';
+      let animClass = 'animate-float';
+
+      if (state === 'loading') {
+        // สถานะกำลังโหลด: ตากลมโตตั้งใจ + ถือแว่นขยายนักสืบ
+        animClass = 'animate-wiggle';
+        eyesSVG = `
+          <circle cx="46" cy="68" r="4.5" fill="#1E293B"/>
+          <circle cx="47.5" cy="66.5" r="1.5" fill="#FFFFFF"/>
+          <circle cx="74" cy="68" r="4.5" fill="#1E293B"/>
+          <circle cx="75.5" cy="66.5" r="1.5" fill="#FFFFFF"/>
+        `;
+        mouthSVG = `<ellipse cx="60" cy="79" rx="4" ry="3.5" fill="#F43F5E"/>`;
+        propSVG = `
+          <!-- แว่นขยายนักสืบ -->
+          <g transform="translate(74, 68) rotate(-15)">
+            <line x1="14" y1="14" x2="26" y2="26" stroke="#92400E" stroke-width="5" stroke-linecap="round"/>
+            <circle cx="8" cy="8" r="12" fill="#E0F2FE" fill-opacity="0.75" stroke="#0284C7" stroke-width="3.5"/>
+            <path d="M3 4 A6 6 0 0 1 10 2" stroke="#FFFFFF" stroke-width="2" stroke-linecap="round" fill="none"/>
+          </g>
+        `;
+      } else if (state === 'healthy') {
+        // สถานะสุขภาพดี: ตาเป็นประกายดาว + ชูมือดีใจ + วิ้งๆ รอบตัว
+        animClass = 'animate-happy';
+        eyesSVG = `
+          <path d="M40 68 Q46 60 52 68" stroke="#1E293B" stroke-width="3.2" stroke-linecap="round" fill="none"/>
+          <path d="M68 68 Q74 60 80 68" stroke="#1E293B" stroke-width="3.2" stroke-linecap="round" fill="none"/>
+        `;
+        mouthSVG = `
+          <path d="M51 75 Q60 87 69 75 Z" fill="#F43F5E"/>
+          <path d="M54 80 Q60 85 66 80" fill="#FDA4AF"/>
+        `;
+        propSVG = `
+          <!-- ดาวประกายความสุข -->
+          <path d="M18 35 L20 40 L25 42 L20 44 L18 49 L16 44 L11 42 L16 40 Z" fill="#FBBF24"/>
+          <path d="M100 32 L102 36 L106 38 L102 40 L100 44 L98 40 L94 38 L98 36 Z" fill="#34D399"/>
+          <!-- แขนชูขึ้นดีใจ -->
+          <path d="M27 76 Q14 60 20 48" stroke="#10B981" stroke-width="7" stroke-linecap="round" fill="none"/>
+          <path d="M93 76 Q106 60 100 48" stroke="#10B981" stroke-width="7" stroke-linecap="round" fill="none"/>
+        `;
+      } else if (state === 'moderate') {
+        // สถานะปานกลาง: ทำท่าครุ่นคิด เอามือแตะคาง
+        eyesSVG = `
+          <circle cx="46" cy="67" r="4" fill="#1E293B"/>
+          <circle cx="47" cy="65.5" r="1.4" fill="#FFFFFF"/>
+          <circle cx="74" cy="67" r="4" fill="#1E293B"/>
+          <circle cx="75" cy="65.5" r="1.4" fill="#FFFFFF"/>
+          <path d="M41 59 L51 61" stroke="#065F46" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M69 61 L79 58" stroke="#065F46" stroke-width="2.5" stroke-linecap="round"/>
+        `;
+        mouthSVG = `<path d="M54 78 Q60 76 66 79" stroke="#1E293B" stroke-width="2.8" stroke-linecap="round" fill="none"/>`;
+        propSVG = `
+          <!-- เครื่องหมายคิด -->
+          <circle cx="98" cy="42" r="3" fill="#F59E0B"/>
+          <circle cx="104" cy="34" r="4.5" fill="#FBBF24"/>
+          <!-- แขนแตะคาง -->
+          <path d="M88 82 Q82 92 66 84" stroke="#10B981" stroke-width="7" stroke-linecap="round" fill="none"/>
+        `;
+      } else if (state === 'warning') {
+        // สถานะเตือนระดับสูง: ถือป้ายเตือนน่ารักๆ สีเหลือง-แดง
+        animClass = 'animate-wiggle';
+        eyesSVG = `
+          <circle cx="46" cy="68" r="4" fill="#1E293B"/>
+          <circle cx="74" cy="68" r="4" fill="#1E293B"/>
+          <path d="M40 62 L51 59" stroke="#065F46" stroke-width="2.5" stroke-linecap="round"/>
+          <path d="M80 62 L69 59" stroke="#065F46" stroke-width="2.5" stroke-linecap="round"/>
+        `;
+        mouthSVG = `<ellipse cx="60" cy="79" rx="4.5" ry="4" fill="#F43F5E"/>`;
+        propSVG = `
+          <!-- ป้ายเตือนสามเหลี่ยมน่ารัก -->
+          <g transform="translate(82, 56)">
+            <rect x="11" y="24" width="4" height="18" rx="2" fill="#92400E"/>
+            <polygon points="13,2 26,25 0,25" fill="#FBBF24" stroke="#EA580C" stroke-width="2.5" stroke-linejoin="round"/>
+            <text x="13" y="21" text-anchor="middle" font-size="14" font-weight="bold" fill="#7C2D12">!</text>
+          </g>
+        `;
+      } else if (state === 'not_found') {
+        // สถานะไม่พบข้อมูล: หน้างง + เครื่องหมายคำถาม
+        eyesSVG = `
+          <circle cx="46" cy="68" r="4" fill="#1E293B"/>
+          <path d="M69 68 L79 68" stroke="#1E293B" stroke-width="3" stroke-linecap="round"/>
+        `;
+        mouthSVG = `<path d="M53 80 Q57 76 61 80 Q65 84 68 79" stroke="#1E293B" stroke-width="2.6" stroke-linecap="round" fill="none"/>`;
+        propSVG = `
+          <text x="94" y="45" font-size="22" font-weight="bold" fill="#6366F1">?</text>
+          <text x="18" y="48" font-size="16" font-weight="bold" fill="#94A3B8">?</text>
+        `;
+      } else {
+        // สถานะเริ่มต้น (idle): ยิ้มแย้มโบกมือทักทาย
+        eyesSVG = `
+          <circle cx="46" cy="68" r="4.3" fill="#1E293B"/>
+          <circle cx="47.5" cy="66.5" r="1.5" fill="#FFFFFF"/>
+          <circle cx="74" cy="68" r="4.3" fill="#1E293B"/>
+          <circle cx="75.5" cy="66.5" r="1.5" fill="#FFFFFF"/>
+        `;
+        mouthSVG = `<path d="M52 76 Q60 84 68 76" stroke="#1E293B" stroke-width="3" stroke-linecap="round" fill="none"/>`;
+        propSVG = `
+          <!-- แขนโบกมือทักทาย -->
+          <path d="M26 78 Q12 68 16 55" stroke="#10B981" stroke-width="7" stroke-linecap="round" fill="none"/>
+          <circle cx="16" cy="54" r="4.5" fill="#34D399"/>
+          <path d="M94 80 Q105 86 102 95" stroke="#10B981" stroke-width="7" stroke-linecap="round" fill="none"/>
+        `;
+      }
+
+      return `
+        <svg viewBox="0 0 120 120" class="w-full h-full ${animClass}" xmlns="http://www.w3.org/2000/svg">
+          <!-- เงาใต้ตัว -->
+          <ellipse cx="60" cy="112" rx="28" ry="5" fill="#10B981" fill-opacity="0.18"/>
+
+          <!-- พุ่มผมบรอกโคลีนุ่มฟู -->
+          <circle cx="34" cy="54" r="16" fill="#10B981"/>
+          <circle cx="86" cy="54" r="16" fill="#10B981"/>
+          <circle cx="46" cy="43" r="17" fill="#059669"/>
+          <circle cx="74" cy="43" r="17" fill="#059669"/>
+          <circle cx="60" cy="40" r="18" fill="#10B981"/>
+
+          <!-- ใบหน้าและลำตัวน้องกู๊ดดี้ -->
+          <path d="M32 58 C32 44, 88 44, 88 58 L84 94 C83 103, 73 107, 60 107 C47 107, 37 103, 36 94 Z" fill="#A7F3D0" stroke="#10B981" stroke-width="2.5"/>
+
+          <!-- ผ้ากันเปื้อนเชฟตัวจิ๋ว -->
+          <path d="M42 88 L78 88 L76 105 C66 107, 54 107, 44 105 Z" fill="#FFFFFF" stroke="#D1FAE5" stroke-width="1.5"/>
+          <circle cx="60" cy="96" r="3" fill="#34D399"/>
+
+          <!-- หมวกเชฟสุดน่ารัก -->
+          <path d="M40 36 C33 34, 32 22, 42 20 C45 11, 57 10, 60 15 C63 10, 75 11, 78 20 C88 22, 87 34, 80 36 Z" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="2"/>
+          <rect x="41" y="33" width="38" height="7" rx="3.5" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.8"/>
+          <!-- ใบไม้เล็กบนหมวกเชฟ -->
+          <path d="M60 27 Q66 20 70 25 Q65 30 60 27 Z" fill="#10B981"/>
+
+          <!-- แก้มชมพูระเรื่อ -->
+          <ellipse cx="39" cy="74" rx="5.5" ry="3.2" fill="#FDA4AF" fill-opacity="0.75"/>
+          <ellipse cx="81" cy="74" rx="5.5" ry="3.2" fill="#FDA4AF" fill-opacity="0.75"/>
+
+          <!-- ดวงตา ปาก และอุปกรณ์ตามสถานะ -->
+          ${eyesSVG}
+          ${mouthSVG}
+          ${propSVG}
+        </svg>
+      `;
+    }
+
+    /**
+     * สร้าง SVG ของ "แก๊งตัวการ์ตูนสารอาหาร 4 สหาย"
+     * type: 'sugar' | 'fat' | 'satfat' | 'salt'
+     */
+    function getNutrientMascotSVG(type) {
+      if (type === 'sugar') {
+        // 1) น้องชูการ์ (Nong Sugar - ก้อนน้ำตาลจอมซน)
+        return `
+          <svg viewBox="0 0 100 100" class="w-full h-full animate-float" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="50" cy="91" rx="24" ry="4.5" fill="#F472B6" fill-opacity="0.2"/>
+            <!-- ก้อนน้ำตาลมุมโค้งมน -->
+            <rect x="22" y="24" width="56" height="56" rx="16" fill="#FFF1F2" stroke="#F472B6" stroke-width="3"/>
+            <rect x="27" y="29" width="46" height="46" rx="12" fill="#FFE4E6" fill-opacity="0.6"/>
+            <!-- ผลึกน้ำตาลวิ้งๆ -->
+            <circle cx="34" cy="36" r="2.2" fill="#FFFFFF"/>
+            <circle cx="67" cy="35" r="1.8" fill="#FFFFFF"/>
+            <path d="M16 24 L18 28 L22 30 L18 32 L16 36 L14 32 L10 30 L14 28 Z" fill="#F472B6"/>
+            <!-- หูกระต่ายขนมหวานบนหัว -->
+            <path d="M42 22 L35 15 L35 26 Z" fill="#EC4899"/>
+            <path d="M58 22 L65 15 L65 26 Z" fill="#EC4899"/>
+            <circle cx="50" cy="21" r="4" fill="#DB2777"/>
+            <!-- ตาและปากจอมซน -->
+            <circle cx="40" cy="52" r="3.8" fill="#1E293B"/>
+            <circle cx="41.2" cy="50.8" r="1.3" fill="#FFFFFF"/>
+            <circle cx="60" cy="52" r="3.8" fill="#1E293B"/>
+            <circle cx="61.2" cy="50.8" r="1.3" fill="#FFFFFF"/>
+            <ellipse cx="33" cy="58" rx="4.5" ry="2.5" fill="#FB7185" fill-opacity="0.6"/>
+            <ellipse cx="67" cy="58" rx="4.5" ry="2.5" fill="#FB7185" fill-opacity="0.6"/>
+            <path d="M44 61 Q50 68 56 61" stroke="#BE185D" stroke-width="2.8" stroke-linecap="round" fill="none"/>
+          </svg>
+        `;
+      }
+
+      if (type === 'fat') {
+        // 2) น้องแฟตตี้ (Nong Fatty - หยดไขมันตัวกลม)
+        return `
+          <svg viewBox="0 0 100 100" class="w-full h-full animate-float" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="50" cy="92" rx="25" ry="4.5" fill="#F59E0B" fill-opacity="0.22"/>
+            <!-- หยดน้ำมัน/ไขมันสีเหลืองทองตัวกลม -->
+            <path d="M50 14 C50 14, 80 46, 80 65 C80 81, 67 88, 50 88 C33 88, 20 81, 20 65 C20 46, 50 14, 50 14 Z" fill="#FDE047" stroke="#F59E0B" stroke-width="3"/>
+            <!-- ไฮไลท์ความวาว -->
+            <path d="M35 45 Q30 56 32 67" stroke="#FEF9C3" stroke-width="4" stroke-linecap="round" fill="none"/>
+            <!-- ตาและแก้มกลม -->
+            <circle cx="41" cy="61" r="3.8" fill="#1E293B"/>
+            <circle cx="42.2" cy="59.8" r="1.3" fill="#FFFFFF"/>
+            <circle cx="59" cy="61" r="3.8" fill="#1E293B"/>
+            <circle cx="60.2" cy="59.8" r="1.3" fill="#FFFFFF"/>
+            <ellipse cx="33" cy="67" rx="5" ry="2.8" fill="#FB923C" fill-opacity="0.55"/>
+            <ellipse cx="67" cy="67" rx="5" ry="2.8" fill="#FB923C" fill-opacity="0.55"/>
+            <path d="M45 69 Q50 75 55 69" stroke="#B45309" stroke-width="2.8" stroke-linecap="round" fill="none"/>
+          </svg>
+        `;
+      }
+
+      if (type === 'satfat') {
+        // 3) น้องแซทแฟต (Nong Sat-Fat - เปลวไฟไขมันอิ่มตัว)
+        return `
+          <svg viewBox="0 0 100 100" class="w-full h-full animate-wiggle" xmlns="http://www.w3.org/2000/svg">
+            <ellipse cx="50" cy="92" rx="24" ry="4.5" fill="#F97316" fill-opacity="0.22"/>
+            <!-- เปลวไฟนอก -->
+            <path d="M52 12 C62 28, 79 38, 79 61 C79 78, 66 88, 50 88 C34 88, 21 78, 21 61 C21 46, 31 36, 36 27 C37 36, 43 38, 44 33 C45 24, 48 17, 52 12 Z" fill="#FB923C" stroke="#EA580C" stroke-width="2.8" stroke-linejoin="round"/>
+            <!-- เปลวไฟในสีเหลืองส้ม -->
+            <path d="M50 36 C58 46, 68 53, 68 66 C68 77, 60 83, 50 83 C40 83, 32 77, 32 66 C32 54, 42 46, 50 36 Z" fill="#FED7AA"/>
+            <!-- คิ้วมุ่งมั่นและหน้าตา -->
+            <path d="M36 55 L44 58" stroke="#9A3412" stroke-width="2.5" stroke-linecap="round"/>
+            <path d="M64 55 L56 58" stroke="#9A3412" stroke-width="2.5" stroke-linecap="round"/>
+            <circle cx="41" cy="63" r="3.6" fill="#1E293B"/>
+            <circle cx="59" cy="63" r="3.6" fill="#1E293B"/>
+            <path d="M45 72 Q50 76 55 72" stroke="#9A3412" stroke-width="2.6" stroke-linecap="round" fill="none"/>
+          </svg>
+        `;
+      }
+
+      // 4) น้องซอลตี้ (Nong Salty - กระปุกเกลือจอมเค็ม)
+      return `
+        <svg viewBox="0 0 100 100" class="w-full h-full animate-float" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="50" cy="92" rx="23" ry="4.5" fill="#0EA5E9" fill-opacity="0.2"/>
+          <!-- ฝาโลหะกระปุกเกลือ -->
+          <path d="M33 26 C33 16, 67 16, 67 26 Z" fill="#CBD5E1" stroke="#64748B" stroke-width="2.5"/>
+          <circle cx="44" cy="21" r="1.4" fill="#475569"/>
+          <circle cx="50" cy="20" r="1.4" fill="#475569"/>
+          <circle cx="56" cy="21" r="1.4" fill="#475569"/>
+          <!-- ตัวขวดแก้วพาสเทลฟ้า -->
+          <path d="M30 27 L70 27 L75 78 C76 84, 71 87, 50 87 C29 87, 24 84, 25 78 Z" fill="#E0F2FE" stroke="#0284C7" stroke-width="2.8" stroke-linejoin="round"/>
+          <!-- เกล็ดเกลือด้านใน -->
+          <path d="M27 62 Q50 57 73 62 L74 78 C75 83, 69 85, 50 85 C31 85, 25 83, 26 78 Z" fill="#FFFFFF" fill-opacity="0.85"/>
+          <!-- ขยิบตาจอมเค็ม -->
+          <circle cx="41" cy="50" r="3.8" fill="#1E293B"/>
+          <circle cx="42.2" cy="48.8" r="1.3" fill="#FFFFFF"/>
+          <path d="M55 50 L63 50" stroke="#1E293B" stroke-width="3" stroke-linecap="round"/>
+          <ellipse cx="34" cy="56" rx="4.2" ry="2.4" fill="#38BDF8" fill-opacity="0.55"/>
+          <ellipse cx="66" cy="56" rx="4.2" ry="2.4" fill="#38BDF8" fill-opacity="0.55"/>
+          <path d="M45 59 Q50 65 56 58" stroke="#0369A1" stroke-width="2.8" stroke-linecap="round" fill="none"/>
+        </svg>
+      `;
+    }
+
+    // =========================================================================
+    // 2. ข้อมูลสารานุกรมตัวการ์ตูนและเกณฑ์ไฟจราจร (UK FSA Criteria ต่อ 100g)
+    // =========================================================================
+    const CHARACTER_PROFILES = [
+      {
+        id: 'goody',
+        name: 'น้องกู๊ดดี้ (Nong Goody)',
+        role: 'หัวหน้าเชฟผู้ช่วยอ่านฉลาก',
+        emoji: '🥦',
+        accent: 'emerald',
+        summary: 'มาสคอตประจำตัวของคุณ! คอยช่วยสรุปภาพรวมสารอาหารของขนมทุกซองอย่างเป็นกันเอง',
+        bodyRole: 'คอยเตือนให้เราสังเกตทั้งพลังงาน น้ำตาล ไขมัน และโซเดียมควบคู่กัน เพื่อเลือกขนมที่อร่อยและดีต่อสุขภาพในระยะยาว',
+        thresholds: 'ดูภาพรวม Nutri-Score (A–E) และสีไฟจราจรทั้ง 4 หมวดประกอบกัน',
+        tip: 'เคล็ดลับน้องกู๊ดดี้: ถ้าอยากกินขนมที่มีแถบสีแดง ลองแบ่งกินกับเพื่อนหรือแบ่งกินทีละครึ่งซอง แล้วดื่มน้ำเปล่าตามเยอะๆ นะครับ!'
+      },
+      {
+        id: 'sugar',
+        name: 'น้องชูการ์ (Nong Sugar)',
+        role: 'ก้อนน้ำตาลจอมซน • หมวดน้ำตาลทั้งหมด',
+        emoji: '🍬',
+        accent: 'pink',
+        summary: 'ให้พลังงานรวดเร็วทันใจ แต่ถ้ามากเกินไปอาจทำให้ฟันผุและระดับน้ำตาลในเลือดพุ่งสูง',
+        bodyRole: 'น้ำตาลเป็นคาร์โบไฮเดรตเชิงเดี่ยวที่ร่างกายดูดซึมได้ไว ทำให้สดชื่นชั่วคราว แต่หากสะสมเกินความต้องการจะถูกเปลี่ยนเป็นไขมันสะสม',
+        thresholds: '🟢 ต่ำ: ≤ 5.000 g | 🟡 ปานกลาง: 5.001 – 22.500 g | 🔴 สูง: > 22.500 g (ต่อ 100g)',
+        tip: 'เคล็ดลับน้องชูการ์: องค์การอนามัยโลกแนะนำไม่ควรบริโภคน้ำตาลเติมเพิ่มเกินวันละ 24 กรัม (ประมาณ 6 ช้อนชา) ครับ!'
+      },
+      {
+        id: 'fat',
+        name: 'น้องแฟตตี้ (Nong Fatty)',
+        role: 'หยดไขมันตัวกลม • หมวดไขมันทั้งหมด',
+        emoji: '🧈',
+        accent: 'amber',
+        summary: 'ช่วยดูดซึมวิตามิน A, D, E, K และให้ความอบอุ่นแก่ร่างกาย แต่ให้พลังงานสูงถึง 9 kcal/กรัม',
+        bodyRole: 'ไขมันจำเป็นต่อการสร้างฮอร์โมนและผนังเซลล์ แต่ขนมทอดหรือเบเกอรี่มักมีไขมันรวมสูง ทำให้ได้รับพลังงานเกินได้ง่าย',
+        thresholds: '🟢 ต่ำ: ≤ 3.000 g | 🟡 ปานกลาง: 3.001 – 17.500 g | 🔴 สูง: > 17.500 g (ต่อ 100g)',
+        tip: 'เคล็ดลับน้องแฟตตี้: เลือกขนมที่ใช้การอบแทนการทอด จะช่วยลดปริมาณไขมันรวมได้เยอะเลยครับ!'
+      },
+      {
+        id: 'satfat',
+        name: 'น้องแซทแฟต (Nong Sat-Fat)',
+        role: 'เปลวไฟไขมันอิ่มตัว • หมวดไขมันอิ่มตัว',
+        emoji: '🔥',
+        accent: 'orange',
+        summary: 'ไขมันชนิดที่พบมากในน้ำมันปาล์ม เนย ครีมเทียม และไขมันสัตว์ ควรคุมปริมาณเพื่อหัวใจที่แข็งแรง',
+        bodyRole: 'การได้รับไขมันอิ่มตัวมากเกินไปอาจเพิ่มระดับคอเลสเตอรอลชนิดไม่ดี (LDL) ในเลือด ซึ่งส่งผลต่อหลอดเลือดและหัวใจในระยะยาว',
+        thresholds: '🟢 ต่ำ: ≤ 1.500 g | 🟡 ปานกลาง: 1.501 – 5.000 g | 🔴 สูง: > 5.000 g (ต่อ 100g)',
+        tip: 'เคล็ดลับน้องแซทแฟต: พลิกดูหลังซองก่อนซื้อ ถ้าไขมันอิ่มตัวเป็นสีเขียว (≤ 1.5g) ถือว่ายอดเยี่ยมมากครับ!'
+      },
+      {
+        id: 'salt',
+        name: 'น้องซอลตี้ (Nong Salty)',
+        role: 'กระปุกเกลือจอมเค็ม • หมวดเกลือ/โซเดียม',
+        emoji: '🧂',
+        accent: 'sky',
+        summary: 'ช่วยรักษาสมดุลน้ำในร่างกายและระบบประสาท แต่ถ้าเค็มเกินไปจะทำให้ตัวบวมและไตทำงานหนัก',
+        bodyRole: 'เกลือ (Salt) ประกอบด้วยโซเดียม (Sodium) โดยเกลือ 1 กรัม เท่ากับโซเดียมประมาณ 400 มิลลิกรัม (0.4 กรัม)',
+        thresholds: '🟢 ต่ำ: ≤ 0.300 g | 🟡 ปานกลาง: 0.301 – 1.500 g | 🔴 สูง: > 1.500 g (ต่อ 100g)',
+        tip: 'เคล็ดลับน้องซอลตี้: ขนมกรุบกรอบรสจัดมักมีโซเดียมสูง ลองสังเกตสัญลักษณ์ "ทางเลือกสุขภาพ" บนซองขนมไทยด้วยนะครับ!'
+      }
+    ];
+
+    // เกณฑ์ไฟจราจรสำหรับ 4 หมวดหลัก (ต่อ 100g)
+    const TRAFFIC_CONFIG = [
+      {
+        key: 'sugars',
+        title: 'น้ำตาล (Sugars)',
+        mascotName: 'น้องชูการ์',
+        lowMax: 5.0,
+        highMin: 22.5,
+        comments: {
+          low: 'เย้! น้ำตาลต่ำมาก กินได้สบายใจไม่กลัวฟันผุครับ',
+          medium: 'น้ำตาลระดับปานกลาง อร่อยกำลังดี แบ่งทานพอเหมาะนะ',
+          high: 'ว้าว! น้ำตาลค่อนข้างสูงเลย แบ่งทานกับเพื่อนหรือดื่มน้ำเปล่าตามนะครับ',
+          unknown: 'ไม่พบข้อมูลปริมาณน้ำตาลชัดเจนบนฐานข้อมูลนี้ครับ'
+        }
+      },
+      {
+        key: 'fat',
+        title: 'ไขมันทั้งหมด (Fat)',
+        mascotName: 'น้องแฟตตี้',
+        lowMax: 3.0,
+        highMin: 17.5,
+        comments: {
+          low: 'ไขมันต่ำสุดๆ เบาสบายท้อง เหมาะกับสายรักสุขภาพ!',
+          medium: 'มีไขมันปานกลาง ให้พลังงานกำลังดี ทานในปริมาณที่แนะนำนะ',
+          high: 'ไขมันทั้งหมดสูงพอสมควร ระวังพลังงานเกินหากทานหมดซองในครั้งเดียวครับ',
+          unknown: 'ไม่พบข้อมูลไขมันทั้งหมดในรายการนี้ครับ'
+        }
+      },
+      {
+        key: 'saturated-fat',
+        title: 'ไขมันอิ่มตัว (Saturated Fat)',
+        mascotName: 'น้องแซทแฟต',
+        lowMax: 1.5,
+        highMin: 5.0,
+        comments: {
+          low: 'ไขมันอิ่มตัวต่ำมาก ดีต่อหลอดเลือดและหัวใจสุดๆ เลย!',
+          medium: 'ไขมันอิ่มตัวปานกลาง นานๆ ทานทีได้สบายครับ',
+          high: 'ไขมันอิ่มตัวสูงนะ! ควรจำกัดปริมาณเพื่อดูแลหัวใจและหลอดเลือดครับ',
+          unknown: 'ไม่พบข้อมูลไขมันอิ่มตัวในรายการนี้ครับ'
+        }
+      },
+      {
+        key: 'salt',
+        title: 'เกลือ (Salt)',
+        mascotName: 'น้องซอลตี้',
+        lowMax: 0.3,
+        highMin: 1.5,
+        comments: {
+          low: 'เกลือต่ำมาก ไม่เค็มจัด ไตไม่ต้องทำงานหนักครับ!',
+          medium: 'ความเค็มระดับปานกลาง อย่าลืมดื่มน้ำสะอาดระหว่างวันนะ',
+          high: 'เตือนความเค็ม! เกลือ/โซเดียมสูง ระวังตัวบวมและกระหายน้ำนะครับ',
+          unknown: 'ไม่พบข้อมูลเกลือ/โซเดียมในรายการนี้ครับ'
+        }
+      }
+    ];
+
+    // เคล็ดลับสุ่มของน้องกู๊ดดี้เมื่อผู้ใช้คลิกที่ตัวมาสคอต
+    const GOODY_TIPS = [
+      'รู้ไหมครับ? เกลือ 1.000 กรัม มีโซเดียมอยู่ประมาณ 0.400 กรัม (400 มิลลิกรัม) น้องซอลตี้ฝากมาบอก!',
+      'เวลาอ่านฉลากโภชนาการ อย่าลืมดู “จำนวนหน่วยบริโภคต่อซอง” นะครับ บางซองกินได้ 2–3 ครั้งเลย!',
+      'ขนมที่มี Nutri-Score ระดับ A หรือ B มักมีใยอาหารหรือโปรตีนที่ดี และมีน้ำตาลกับไขมันอิ่มตัวต่ำครับ',
+      'ถ้าสแกนขนมไทยแล้วไม่เจอข้อมูล แปลว่ายังไม่มีคนเพิ่มลงฐานข้อมูลเปิด Open Food Facts คุณสามารถช่วยเพิ่มได้ฟรีเลย!',
+      'ดื่มน้ำเปล่าแทนน้ำหวานคู่กับขนม ช่วยลดปริมาณน้ำตาลต่อมื้อได้มากกว่า 20 กรัมเลยนะครับ!'
+    ];
+
+    // =========================================================================
+    // 3. สถานะของแอปพลิเคชัน (Application State)
+    // =========================================================================
+    let html5QrCode = null;
+    let isScanning = false;
+    let currentProductData = null;      // เก็บ object product ล่าสุดจาก API
+    let currentFullResponse = null;     // เก็บ JSON response ทั้งหมดจาก API
+    let currentExtractedMetrics = null; // เก็บค่าที่ประมวลผลแล้ว (ทั้ง 100g และ serving)
+    let activeBasis = '100g';           // '100g' หรือ 'serving'
+    let activeJsonMode = 'nutriments';  // 'nutriments' หรือ 'full'
+    let activeCharacterTab = 'goody';   // แท็บตัวการ์ตูนที่เลือกอยู่
+
+    // =========================================================================
+    // 4. ฟังก์ชันเริ่มต้นเมื่อโหลดหน้าเว็บ
+    // =========================================================================
+    window.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      checkEnvironmentWarnings();
+      updateNongGoody('idle');
+      renderCharacterShowcase('goody');
+    });
+
+    /**
+     * ตรวจสอบสภาพแวดล้อมเบราว์เซอร์ (In-App Browser ของ LINE/FB หรือ HTTP/file://)
+     */
+    function checkEnvironmentWarnings() {
+      const ua = navigator.userAgent || navigator.vendor || window.opera || '';
+      const isInApp = /Line\/|FBAN|FBAV|Instagram|MicroMessenger|TikTok/i.test(ua);
+      const protocol = window.location.protocol;
+      const hostname = window.location.hostname;
+      const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '';
+      const isInsecureHttp = protocol === 'file:' || (protocol === 'http:' && !isLocalhost);
+
+      const banner = document.getElementById('envWarningBanner');
+      const titleEl = document.getElementById('envWarningTitle');
+      const descEl = document.getElementById('envWarningDesc');
+
+      if (isInApp) {
+        banner.classList.remove('hidden');
+        titleEl.textContent = 'ตรวจพบการเปิดผ่านแอปแชท / โซเชียล (LINE / Facebook)';
+        descEl.textContent = 'เบราว์เซอร์ภายในแอปอาจบล็อกกล้องสแกนบาร์โค้ด กรุณากดคัดลอกลิงก์แล้วนำไปเปิดใน Chrome หรือ Safari ครับ';
+      } else if (isInsecureHttp) {
+        banner.classList.remove('hidden');
+        titleEl.textContent = `ตรวจพบโปรโตคอล ${protocol} ซึ่งไม่ใช่ HTTPS`;
+        descEl.textContent = 'เบราว์เซอร์สมัยใหม่กำหนดให้เปิดกล้องสแกนได้เฉพาะบน HTTPS หรือ localhost เท่านั้น (ยังสามารถกรอกเลขบาร์โค้ดด้านล่างได้ตามปกติ)';
+      }
+    }
+
+    /**
+     * อัปเดตสีหน้า ท่าทาง และคำพูดของมาสคอต "น้องกู๊ดดี้"
+     */
+    function updateNongGoody(state, customSpeechHTML = null) {
+      const avatarWrapper = document.getElementById('goodyAvatarWrapper');
+      const stateBadge = document.getElementById('goodyStateBadge');
+      const speechText = document.getElementById('goodySpeechText');
+      const speechBox = document.getElementById('goodySpeechBox');
+
+      avatarWrapper.innerHTML = getNongGoodySVG(state);
+
+      const stateConfigs = {
+        idle: {
+          badge: '✨ น้องกู๊ดดี้พร้อมช่วยแล้ว!',
+          badgeClass: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+          boxBorder: 'border-emerald-100',
+          defaultSpeech: 'สวัสดีครับ! ผมชื่อ <strong>น้องกู๊ดดี้</strong> 🥦👨‍🍳 กดปุ่ม <strong>“เปิดกล้องสแกน”</strong> เพื่อส่องบาร์โค้ดบนซองขนม หรือลองกดปุ่มขนมตัวอย่างด้านล่างให้ผมช่วยตรวจสารอาหารได้เลยครับ!'
+        },
+        loading: {
+          badge: '🔍 กำลังส่องข้อมูลโภชนาการ...',
+          badgeClass: 'bg-sky-100 text-sky-700 border-sky-200',
+          boxBorder: 'border-sky-200',
+          defaultSpeech: 'ขอผมหยิบแว่นขยายแป๊บนึงนะครับ! กำลังค้นหาข้อมูลสารอาหารจากฐานข้อมูล <strong>Open Food Facts</strong>...'
+        },
+        healthy: {
+          badge: '🌟 ผ่านเกณฑ์สุขภาพดีเยี่ยม!',
+          badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-300',
+          boxBorder: 'border-emerald-300',
+          defaultSpeech: 'เย้! ขนมชิ้นนี้สารอาหารสมดุลดีมาก น้ำตาลและไขมันอยู่ในเกณฑ์ต่ำ ทานได้อย่างสบายใจเลยครับ!'
+        },
+        moderate: {
+          badge: '🤔 ทานได้ในปริมาณพอเหมาะ',
+          badgeClass: 'bg-amber-100 text-amber-800 border-amber-300',
+          boxBorder: 'border-amber-300',
+          defaultSpeech: 'อืม... ขนมชิ้นนี้มีสารอาหารบางตัวอยู่ในระดับปานกลาง แนะนำให้แบ่งทานในปริมาณที่พอเหมาะ และดื่มน้ำเปล่าตามนะครับ!'
+        },
+        warning: {
+          badge: '⚠️ มีสารอาหารระดับสูง ควรแบ่งทาน',
+          badgeClass: 'bg-rose-100 text-rose-800 border-rose-300',
+          boxBorder: 'border-rose-300',
+          defaultSpeech: 'ช้าก่อนครับ! ขนมชิ้นนี้มีน้ำตาล ไขมัน หรือโซเดียมค่อนข้างสูง แนะนำให้แบ่งทานกับเพื่อนหรือนานๆ ทานทีนะ!'
+        },
+        not_found: {
+          badge: '❓ ไม่พบข้อมูลบาร์โค้ดนี้',
+          badgeClass: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+          boxBorder: 'border-indigo-200',
+          defaultSpeech: 'เอ๊ะ! ผมหาบาร์โค้ดนี้ไม่เจอในฐานข้อมูล ลองตรวจสอบตัวเลขอีกครั้ง หรือช่วยเพิ่มข้อมูลสินค้านี้บนเว็บไซต์ Open Food Facts ได้นะครับ'
+        }
+      };
+
+      const cfg = stateConfigs[state] || stateConfigs.idle;
+      stateBadge.textContent = cfg.badge;
+      stateBadge.className = `mt-2 inline-flex items-center gap-1 text-[11px] font-semibold px-3 py-0.5 rounded-full border ${cfg.badgeClass}`;
+      speechBox.className = `relative bg-white/95 rounded-3xl p-4 sm:p-5 border-2 ${cfg.boxBorder} shadow-sm transition-colors duration-300`;
+      speechText.innerHTML = customSpeechHTML || cfg.defaultSpeech;
+    }
+
+    /**
+     * สุ่มคำพูดเคล็ดลับสุขภาพเมื่อคลิกที่น้องกู๊ดดี้
+     */
+    function triggerRandomGoodyTip() {
+      const randomTip = GOODY_TIPS[Math.floor(Math.random() * GOODY_TIPS.length)];
+      const speechText = document.getElementById('goodySpeechText');
+      speechText.innerHTML = `💡 <strong>เคล็ดลับจากน้องกู๊ดดี้:</strong> ${randomTip}`;
+      showToast('น้องกู๊ดดี้แบ่งปันเคล็ดลับสุขภาพให้คุณ!', 'success');
+    }
+
+    // =========================================================================
+    // 5. ส่วนสารานุกรมตัวการ์ตูนแบบโต้ตอบได้ ("รู้จักแก๊งการ์ตูนผู้ช่วยอ่านฉลาก")
+    // =========================================================================
+    function renderCharacterShowcase(selectedId) {
+      activeCharacterTab = selectedId;
+      const tabsContainer = document.getElementById('characterTabs');
+      const detailPanel = document.getElementById('characterDetailPanel');
+
+      tabsContainer.innerHTML = CHARACTER_PROFILES.map((char) => {
+        const isActive = char.id === selectedId;
+        const activeStyle = isActive
+          ? 'bg-emerald-600 text-white border-emerald-600 shadow-md scale-[1.02]'
+          : 'bg-white/90 hover:bg-emerald-50/70 text-slate-700 border-slate-200/80';
+
+        return `
+          <button
+            type="button"
+            onclick="renderCharacterShowcase('${char.id}')"
+            class="flex flex-col items-center justify-center p-3 rounded-2xl border text-center transition-all duration-200 ${activeStyle}"
+          >
+            <span class="text-xl mb-1">${char.emoji}</span>
+            <span class="text-xs font-bold line-clamp-1">${char.name.split(' ')[0]}</span>
+            <span class="text-[10px] opacity-80 line-clamp-1">${char.id === 'goody' ? 'มาสคอตหลัก' : '4 สหาย'}</span>
+          </button>
+        `;
+      }).join('');
+
+      const activeChar = CHARACTER_PROFILES.find((c) => c.id === selectedId) || CHARACTER_PROFILES[0];
+      const svgMarkup = activeChar.id === 'goody'
+        ? getNongGoodySVG('healthy')
+        : getNutrientMascotSVG(activeChar.id);
+
+      detailPanel.innerHTML = `
+        <div class="flex flex-col md:flex-row items-center gap-6">
+          <div class="w-32 h-32 sm:w-36 sm:h-36 rounded-3xl bg-white border border-slate-100 shadow-sm p-3 shrink-0 flex items-center justify-center">
+            ${svgMarkup}
+          </div>
+          <div class="flex-1 space-y-3 text-center md:text-left">
+            <div>
+              <span class="inline-block text-xs font-semibold px-3 py-0.5 rounded-full bg-emerald-100 text-emerald-800 mb-1">
+                ${activeChar.role}
+              </span>
+              <h3 class="text-lg sm:text-xl font-bold text-slate-800">${activeChar.name}</h3>
+              <p class="text-xs sm:text-sm text-slate-600 mt-1">${activeChar.summary}</p>
+            </div>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-left text-xs sm:text-sm">
+              <div class="bg-white/90 rounded-2xl p-3.5 border border-slate-100">
+                <p class="font-semibold text-slate-700 mb-1">🧬 บทบาทต่อร่างกาย</p>
+                <p class="text-slate-600 leading-relaxed text-xs">${activeChar.bodyRole}</p>
+              </div>
+              <div class="bg-white/90 rounded-2xl p-3.5 border border-slate-100">
+                <p class="font-semibold text-slate-700 mb-1">🚦 เกณฑ์ไฟจราจร (ต่อ 100g)</p>
+                <p class="text-slate-700 font-medium leading-relaxed text-xs">${activeChar.thresholds}</p>
+              </div>
+            </div>
+
+            <div class="rounded-2xl bg-amber-50/90 border border-amber-200/70 px-4 py-2.5 text-xs text-amber-900 text-left">
+              💡 ${activeChar.tip}
+            </div>
+          </div>
+        </div>
+      `;
+    }
+
+    // =========================================================================
+    // 6. ระบบกล้องสแกนบาร์โค้ด (Html5Qrcode)
+    // =========================================================================
+    function togglePrecautions() {
+      const body = document.getElementById('precautionBody');
+      const chevron = document.getElementById('precautionChevron');
+      body.classList.toggle('hidden');
+      chevron.classList.toggle('rotate-180');
+    }
+
+    async function startScanner(preferredCameraId = null) {
+      const scannerContainer = document.getElementById('scannerContainer');
+      const cameraErrorBox = document.getElementById('cameraErrorBox');
+      const cameraErrorMsg = document.getElementById('cameraErrorMsg');
+      const startBtn = document.getElementById('startScanBtn');
+      const stopBtn = document.getElementById('stopScanBtn');
+      const cameraSelect = document.getElementById('cameraSelect');
+
+      cameraErrorBox.classList.add('hidden');
+
+      try {
+        // หยุดกล้องเก่าก่อนหากกำลังทำงานอยู่
+        if (html5QrCode && isScanning) {
+          await html5QrCode.stop();
+          isScanning = false;
+        }
+
+        scannerContainer.classList.remove('hidden');
+        startBtn.classList.add('hidden');
+        stopBtn.classList.remove('hidden');
+
+        if (!html5QrCode) {
+          html5QrCode = new Html5Qrcode('reader', {
+            formatsToSupport: [
+              Html5QrcodeSupportedFormats.EAN_13,
+              Html5QrcodeSupportedFormats.EAN_8,
+              Html5QrcodeSupportedFormats.UPC_A,
+              Html5QrcodeSupportedFormats.UPC_E,
+              Html5QrcodeSupportedFormats.CODE_128
+            ],
+            verbose: false
+          });
+        }
+
+        // ดึงรายการกล้องทั้งหมดที่มีในอุปกรณ์
+        const devices = await Html5Qrcode.getCameras();
+        if (devices && devices.length > 0) {
+          cameraSelect.innerHTML = devices.map((cam, idx) => {
+            const label = cam.label || `กล้องตัวที่ ${idx + 1}`;
+            return `<option value="${cam.id}">${label}</option>`;
+          }).join('');
+          cameraSelect.classList.remove('hidden');
+
+          // เลือกกล้องหลังอัตโนมัติหากไม่ได้ระบุ cameraId
+          let selectedId = preferredCameraId;
+          if (!selectedId) {
+            const backCam = devices.find((d) => /back|rear|environment|หลัง/i.test(d.label));
+            selectedId = backCam ? backCam.id : devices[devices.length - 1].id;
+          }
+          cameraSelect.value = selectedId;
+
+          // ผูก event สลับกล้องเมื่อผู้ใช้เปลี่ยน select
+          cameraSelect.onchange = () => {
+            if (isScanning) {
+              startScanner(cameraSelect.value);
+            }
+          };
+
+          await html5QrCode.start(
+            selectedId,
+            { fps: 12, qrbox: { width: 260, height: 140 } },
+            onBarcodeScannedSuccess,
+            () => {} // ข้าม frame ที่ยังไม่พบบาร์โค้ด
+          );
+        } else {
+          // Fallback ใช้ facingMode: environment
+          await html5QrCode.start(
+            { facingMode: 'environment' },
+            { fps: 12, qrbox: { width: 260, height: 140 } },
+            onBarcodeScannedSuccess,
+            () => {}
+          );
+        }
+
+        isScanning = true;
+        showToast('เปิดกล้องสแกนเรียบร้อย นำบาร์โค้ดมาส่องในกรอบได้เลย!', 'success');
+      } catch (err) {
+        console.error('Camera start error:', err);
+        isScanning = false;
+        scannerContainer.classList.add('hidden');
+        startBtn.classList.remove('hidden');
+        stopBtn.classList.add('hidden');
+        cameraErrorBox.classList.remove('hidden');
+
+        let friendlyError = 'ไม่สามารถเข้าถึงกล้องได้ กรุณาตรวจสอบว่าอนุญาตสิทธิ์กล้องแล้ว และเปิดเว็บผ่าน HTTPS';
+        if (err && err.name === 'NotAllowedError') {
+          friendlyError = 'คุณปฏิเสธสิทธิ์การเข้าถึงกล้อง กรุณากดอนุญาตสิทธิ์กล้องที่แถบที่อยู่เว็บไซต์ (URL Bar) แล้วลองใหม่ครับ';
+        } else if (err && err.name === 'NotFoundError') {
+          friendlyError = 'ไม่พบอุปกรณ์กล้องบนเครื่องนี้ กรุณากรอกเลขบาร์โค้ดด้วยตนเองแทนครับ';
+        }
+        cameraErrorMsg.textContent = friendlyError;
+      }
+    }
+
+    async function stopScanner() {
+      const scannerContainer = document.getElementById('scannerContainer');
+      const startBtn = document.getElementById('startScanBtn');
+      const stopBtn = document.getElementById('stopScanBtn');
+
+      try {
+        if (html5QrCode && isScanning) {
+          await html5QrCode.stop();
+        }
+      } catch (err) {
+        console.warn('Stop scanner warning:', err);
+      } finally {
+        isScanning = false;
+        scannerContainer.classList.add('hidden');
+        startBtn.classList.remove('hidden');
+        stopBtn.classList.add('hidden');
+      }
+    }
+
+    function onBarcodeScannedSuccess(decodedText) {
+      const cleaned = (decodedText || '').trim();
+      if (!cleaned) return;
+
+      document.getElementById('barcodeInput').value = cleaned;
+      stopScanner();
+      showToast(`สแกนพบบาร์โค้ด: ${cleaned}`, 'success');
+      lookupProduct(cleaned);
+    }
+
+    function handleManualSubmit(event) {
+      event.preventDefault();
+      const val = document.getElementById('barcodeInput').value.trim();
+      if (!val) {
+        showToast('กรุณากรอกเลขบาร์โค้ดก่อนกดค้นหาครับ', 'warning');
+        return;
+      }
+      lookupProduct(val);
+    }
+
+    function clearBarcodeInput() {
+      const input = document.getElementById('barcodeInput');
+      input.value = '';
+      input.focus();
+    }
+
+    // =========================================================================
+    // 7. ดึงข้อมูลจาก Open Food Facts API v2 และระบบอ่านข้อมูล 2 ชั้น
+    // =========================================================================
+
+    /**
+     * จัดรูปแบบตัวเลขทศนิยม 3 ตำแหน่งอย่างแม่นยำ
+     */
+    function formatDecimal3(val) {
+      if (val === null || val === undefined || val === '' || Number.isNaN(Number(val))) {
+        return '-';
+      }
+      return Number(val).toFixed(3);
+    }
+
+    /**
+     * ค้นหาสินค้าจาก Open Food Facts API v2
+     */
+    async function lookupProduct(rawBarcode) {
+      const barcode = String(rawBarcode).replace(/\s+/g, '');
+      if (!barcode) return;
+
+      document.getElementById('barcodeInput').value = barcode;
+      updateNongGoody('loading', `กำลังส่องหาข้อมูลบาร์โค้ด <span class="font-mono-num font-bold text-sky-700">${barcode}</span> จากฐานข้อมูล Open Food Facts...`);
+
+      const resultsSection = document.getElementById('resultsSection');
+
+      try {
+        const url = `https://world.openfoodfacts.org/api/v2/product/${encodeURIComponent(barcode)}.json`;
+        const response = await fetch(url);
+        if (!response.ok && response.status !== 404) {
+          throw new Error(`HTTP Error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        currentFullResponse = data;
+
+        if (data.status !== 1 || !data.product) {
+          resultsSection.classList.add('hidden');
+          updateNongGoody(
+            'not_found',
+            `ไม่พบข้อมูลสินค้าสำหรับบาร์โค้ด <span class="font-mono-num font-bold text-indigo-700">${barcode}</span> ในฐานข้อมูล Open Food Facts ครับ ลองตรวจสอบตัวเลขอีกครั้ง หรือ <a href="https://world.openfoodfacts.org/cgi/product.pl?code=${encodeURIComponent(barcode)}" target="_blank" rel="noopener noreferrer" class="underline font-semibold text-indigo-700">คลิกที่นี่เพื่อช่วยเพิ่มข้อมูลสินค้า</a>`
+          );
+          showToast('ไม่พบข้อมูลสินค้าในฐานข้อมูล', 'warning');
+          return;
+        }
+
+        currentProductData = data.product;
+        currentExtractedMetrics = extractTwoTierNutrition(data.product);
+
+        // แสดงผลลัพธ์ทั้งหมด
+        renderProductDashboard(barcode, data.product, currentExtractedMetrics);
+        resultsSection.classList.remove('hidden');
+
+        // เลื่อนหน้าจอลงมาที่ผลลัพธ์อย่างนุ่มนวล
+        resultsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } catch (error) {
+        console.error('Fetch product error:', error);
+        updateNongGoody(
+          'not_found',
+          'เกิดข้อผิดพลาดในการเชื่อมต่อกับเซิร์ฟเวอร์ Open Food Facts กรุณาตรวจสอบอินเทอร์เน็ตแล้วลองใหม่อีกครั้งนะครับ'
+        );
+        showToast('ไม่สามารถเชื่อมต่อฐานข้อมูลได้ในขณะนี้', 'error');
+      }
+    }
+
+    /**
+     * ระบบอ่านข้อมูล 2 ชั้น:
+     * ชั้นที่ 1 (Primary): อ่านจาก product.nutriments (_100g และ _serving)
+     * ชั้นที่ 2 (Secondary Fallback): สกัดค่าตัวเลขจากฉลาก/แพ็กเกจ (nutrition_data, ingredients_text_th, ingredients_text, labels)
+     */
+    function extractTwoTierNutrition(product) {
+      const n = product.nutriments || {};
+      const fallbackTextPool = [
+        product.nutrition_data || '',
+        product.ingredients_text_th || '',
+        product.ingredients_text || '',
+        product.labels || '',
+        product.generic_name_th || '',
+        product.generic_name || ''
+      ].join(' | ');
+
+      const fallbackNotes = [];
+
+      // ฟังก์ชันช่วยสกัดค่าจากข้อความฉลากหากใน nutriments ไม่มี
+      function extractFromLabelText(patterns, labelThai, divider = 1) {
+        for (const regex of patterns) {
+          const match = fallbackTextPool.match(regex);
+          if (match && match[1]) {
+            const num = parseFloat(match[1].replace(',', '.')) / divider;
+            if (!Number.isNaN(num)) {
+              fallbackNotes.push(`${labelThai}: ${num.toFixed(3)}g (สกัดจากข้อความฉลาก)`);
+              return num;
+            }
+          }
+        }
+        return null;
+      }
+
+      // ฟังก์ชันอ่านค่าแต่ละสารอาหารพร้อม Fallback
+      function getNutrientPair(key, fallbackPatterns = [], labelThai = '') {
+        let val100 = n[`${key}_100g`] !== undefined && n[`${key}_100g`] !== '' ? Number(n[`${key}_100g`]) : null;
+        let valServ = n[`${key}_serving`] !== undefined && n[`${key}_serving`] !== '' ? Number(n[`${key}_serving`]) : null;
+        let source100 = val100 !== null && !Number.isNaN(val100) ? 'nutriments' : null;
+        let sourceServ = valServ !== null && !Number.isNaN(valServ) ? 'nutriments' : null;
+
+        // หากชั้นที่ 1 ไม่มีค่า ให้ลองสกัดจากข้อความฉลาก (ชั้นที่ 2)
+        if (source100 === null && fallbackPatterns.length > 0) {
+          const extracted = extractFromLabelText(fallbackPatterns, labelThai, 1);
+          if (extracted !== null) {
+            val100 = extracted;
+            source100 = 'fallback';
+          }
+        }
+
+        return {
+          '100g': Number.isNaN(val100) ? null : val100,
+          'serving': Number.isNaN(valServ) ? null : valServ,
+          source100,
+          sourceServ
+        };
+      }
+
+      // 1. พลังงาน (kcal และ kJ)
+      let kcal100 = n['energy-kcal_100g'] !== undefined ? Number(n['energy-kcal_100g']) : null;
+      let kj100 = n['energy_100g'] !== undefined ? Number(n['energy_100g']) : (n['energy-kj_100g'] !== undefined ? Number(n['energy-kj_100g']) : null);
+      let kcalServ = n['energy-kcal_serving'] !== undefined ? Number(n['energy-kcal_serving']) : null;
+      let kjServ = n['energy_serving'] !== undefined ? Number(n['energy_serving']) : (n['energy-kj_serving'] !== undefined ? Number(n['energy-kj_serving']) : null);
+      let energySource = 'nutriments';
+
+      // คำนวณแปลงระหว่าง kcal <-> kJ หากมีค่าใดค่าหนึ่ง
+      if (kcal100 === null && kj100 !== null && !Number.isNaN(kj100)) {
+        kcal100 = kj100 / 4.184;
+      } else if (kj100 === null && kcal100 !== null && !Number.isNaN(kcal100)) {
+        kj100 = kcal100 * 4.184;
+      }
+
+      if (kcalServ === null && kjServ !== null && !Number.isNaN(kjServ)) {
+        kcalServ = kjServ / 4.184;
+      } else if (kjServ === null && kcalServ !== null && !Number.isNaN(kcalServ)) {
+        kjServ = kcalServ * 4.184;
+      }
+
+      // Secondary Fallback สำหรับพลังงาน
+      if (kcal100 === null) {
+        const energyMatch = fallbackTextPool.match(/(?:พลังงาน|energy|calories)[^\d]{0,15}(\d+(?:[.,]\d+)?)\s*(?:kcal|กิโลแคลอรี)/i);
+        if (energyMatch && energyMatch[1]) {
+          kcal100 = parseFloat(energyMatch[1].replace(',', '.'));
+          kj100 = kcal100 * 4.184;
+          energySource = 'fallback';
+          fallbackNotes.push(`พลังงาน: ${kcal100.toFixed(3)} kcal (สกัดจากข้อความฉลาก)`);
+        }
+      }
+
+      // 2. 4 หมวดไฟจราจร + สารอาหารหลักเพิ่มเติม
+      const sugars = getNutrientPair('sugars', [/(?:น้ำตาล|sugars?)[^\d]{0,12}(\d+(?:[.,]\d+)?)\s*(?:g|ก\.)/i], 'น้ำตาล');
+      const fat = getNutrientPair('fat', [/(?:ไขมันทั้งหมด|total fat|ไขมัน)[^\d]{0,12}(\d+(?:[.,]\d+)?)\s*(?:g|ก\.)/i], 'ไขมันทั้งหมด');
+      const satFat = getNutrientPair('saturated-fat', [/(?:ไขมันอิ่มตัว|saturated fat)[^\d]{0,12}(\d+(?:[.,]\d+)?)\s*(?:g|ก\.)/i], 'ไขมันอิ่มตัว');
+      const carbohydrates = getNutrientPair('carbohydrates', [/(?:คาร์โบไฮเดรต|carbohydrates?)[^\d]{0,12}(\d+(?:[.,]\d+)?)\s*(?:g|ก\.)/i], 'คาร์โบไฮเดรต');
+      const proteins = getNutrientPair('proteins', [/(?:โปรตีน|proteins?)[^\d]{0,12}(\d+(?:[.,]\d+)?)\s*(?:g|ก\.)/i], 'โปรตีน');
+      const fiber = getNutrientPair('fiber', [/(?:ใยอาหาร|dietary fiber|fiber)[^\d]{0,12}(\d+(?:[.,]\d+)?)\s*(?:g|ก\.)/i], 'ใยอาหาร');
+
+      // เกลือ และ โซเดียม (แปลงเชื่อมโยงกันได้: salt = sodium * 2.5)
+      const salt = getNutrientPair('salt', [/(?:เกลือ|salt)[^\d]{0,12}(\d+(?:[.,]\d+)?)\s*(?:g|ก\.)/i], 'เกลือ');
+      const sodium = getNutrientPair('sodium', [], 'โซเดียม');
+
+      // สกัดโซเดียมหน่วย mg จากฉลากไทย (เช่น "โซเดียม 150 มก." -> 0.150 g)
+      if (sodium['100g'] === null) {
+        const sodMgMatch = fallbackTextPool.match(/(?:โซเดียม|sodium)[^\d]{0,12}(\d+(?:[.,]\d+)?)\s*(?:mg|มก\.)/i);
+        if (sodMgMatch && sodMgMatch[1]) {
+          sodium['100g'] = parseFloat(sodMgMatch[1].replace(',', '.')) / 1000;
+          sodium.source100 = 'fallback';
+          fallbackNotes.push(`โซเดียม: ${sodium['100g'].toFixed(3)}g (สกัดจากหน่วย มก. บนฉลาก)`);
+        }
+      }
+
+      // เติมเต็มระหว่าง salt และ sodium หากมีตัวใดตัวหนึ่ง
+      if (salt['100g'] === null && sodium['100g'] !== null) {
+        salt['100g'] = sodium['100g'] * 2.5;
+        salt.source100 = sodium.source100;
+      } else if (sodium['100g'] === null && salt['100g'] !== null) {
+        sodium['100g'] = salt['100g'] / 2.5;
+        sodium.source100 = salt.source100;
+      }
+
+      if (salt['serving'] === null && sodium['serving'] !== null) {
+        salt['serving'] = sodium['serving'] * 2.5;
+        salt.sourceServ = sodium.sourceServ;
+      } else if (sodium['serving'] === null && salt['serving'] !== null) {
+        sodium['serving'] = salt['serving'] / 2.5;
+        sodium.sourceServ = salt.sourceServ;
+      }
+
+      return {
+        energy: {
+          kcal100,
+          kj100,
+          kcalServ,
+          kjServ,
+          source: energySource
+        },
+        sugars,
+        fat,
+        'saturated-fat': satFat,
+        salt,
+        carbohydrates,
+        proteins,
+        fiber,
+        sodium,
+        fallbackNotes
+      };
+    }
+
+    // =========================================================================
+    // 8. ประเมินระดับไฟจราจร & อัปเดต UI ผลลัพธ์ทั้งหมด
+    // =========================================================================
+
+    /**
+     * ประเมินระดับไฟจราจร ('low' | 'medium' | 'high' | 'unknown')
+     * อ้างอิงเกณฑ์มาตรฐานต่อ 100g เพื่อความแม่นยำทางโภชนาการ
+     */
+    function evaluateTrafficLevel(val100g, lowMax, highMin) {
+      if (val100g === null || val100g === undefined || Number.isNaN(val100g)) {
+        return 'unknown';
+      }
+      if (val100g <= lowMax) return 'low';
+      if (val100g > highMin) return 'high';
+      return 'medium';
+    }
+
+    /**
+     * สลับมุมมองฐานข้อมูล '100g' <-> 'serving'
+     */
+    function setNutritionBasis(basis) {
+      activeBasis = basis;
+      const btn100g = document.getElementById('btnBasis100g');
+      const btnServing = document.getElementById('btnBasisServing');
+
+      if (basis === '100g') {
+        btn100g.className = 'px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold bg-white text-emerald-700 shadow-sm transition';
+        btnServing.className = 'px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold text-slate-600 hover:text-slate-800 transition';
+      } else {
+        btnServing.className = 'px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold bg-white text-emerald-700 shadow-sm transition';
+        btn100g.className = 'px-3.5 py-1.5 rounded-xl text-xs sm:text-sm font-semibold text-slate-600 hover:text-slate-800 transition';
+      }
+
+      if (currentProductData && currentExtractedMetrics) {
+        renderNutritionValuesByBasis(currentProductData, currentExtractedMetrics);
+      }
+    }
+
+    /**
+     * แสดงผลแดชบอร์ดสินค้าทั้งหมด
+     */
+    function renderProductDashboard(barcode, product, metrics) {
+      // 1) รูปภาพและชื่อสินค้า
+      const imgEl = document.getElementById('productImage');
+      imgEl.src = product.image_front_url || product.image_url || product.image_small_url || 'https://placehold.co/300x300/ECFDF5/059669?text=No+Image';
+
+      const productName = product.product_name_th || product.product_name || product.generic_name_th || product.generic_name || 'ไม่ระบุชื่อสินค้า';
+      const brand = product.brands || 'ไม่ระบุยี่ห้อ';
+      const quantity = product.quantity || 'ไม่ระบุปริมาณสุทธิ';
+
+      document.getElementById('productBarcodeBadge').textContent = `#${barcode}`;
+      document.getElementById('productName').textContent = productName;
+      document.getElementById('productBrand').textContent = `ยี่ห้อ: ${brand} • ปริมาณสุทธิ: ${quantity}`;
+
+      // ขนาดหน่วยบริโภค
+      const servingSizeText = product.serving_size || 'ไม่ระบุในฐานข้อมูล';
+      document.getElementById('servingSizeInfo').innerHTML = `ขนาดหนึ่งหน่วยบริโภค: <span class="font-semibold text-slate-700">${servingSizeText}</span>`;
+
+      // ป้าย Nutri-Score และ NOVA Group
+      const nutriGrade = (product.nutriscore_grade || '').toUpperCase();
+      const nutriBadge = document.getElementById('nutriScoreBadge');
+      if (['A', 'B', 'C', 'D', 'E'].includes(nutriGrade)) {
+        const gradeColors = {
+          A: 'bg-emerald-600 text-white border-emerald-700',
+          B: 'bg-lime-500 text-white border-lime-600',
+          C: 'bg-amber-400 text-slate-900 border-amber-500',
+          D: 'bg-orange-500 text-white border-orange-600',
+          E: 'bg-rose-600 text-white border-rose-700'
+        };
+        nutriBadge.textContent = `Nutri-Score: ${nutriGrade}`;
+        nutriBadge.className = `text-xs font-bold px-3 py-1 rounded-full border ${gradeColors[nutriGrade]}`;
+      } else {
+        nutriBadge.textContent = 'Nutri-Score: ไม่ระบุ';
+        nutriBadge.className = 'text-xs font-semibold px-3 py-1 rounded-full bg-slate-100 text-slate-600 border border-slate-200';
+      }
+
+      const novaGroup = product.nova_group;
+      const novaBadge = document.getElementById('novaGroupBadge');
+      novaBadge.textContent = novaGroup ? `NOVA กลุ่มที่ ${novaGroup}` : 'NOVA: ไม่ระบุ';
+
+      // 2) คำนวณภาพรวมเพื่ออัปเดตท่าทางและคำพูดของ "น้องกู๊ดดี้"
+      updateGoodyVerdictFromMetrics(productName, nutriGrade, metrics);
+
+      // 3) แสดงตัวเลขสารอาหารตามฐานข้อมูลที่เลือก (100g หรือ serving)
+      renderNutritionValuesByBasis(product, metrics);
+
+      // 4) ตาราง Nutrition Facts ทั้งหมด
+      renderAllNutrientsTable(product.nutriments || {});
+
+      // 5) ข้อมูลฉลาก ส่วนประกอบ และแพ็กเกจ
+      const ingredients = product.ingredients_text_th || product.ingredients_text || 'ไม่มีข้อมูลส่วนประกอบในฐานข้อมูล';
+      document.getElementById('ingredientsText').textContent = ingredients;
+
+      const allergens = (product.allergens_tags && product.allergens_tags.length > 0)
+        ? product.allergens_tags.map((a) => a.replace(/^en:|^th:/, '')).join(', ')
+        : (product.allergens || 'ไม่ระบุสารก่อภูมิแพ้');
+      document.getElementById('allergensText').textContent = allergens;
+
+      const labels = product.labels || '-';
+      const categories = product.categories || '-';
+      const packaging = product.packaging || '-';
+      document.getElementById('labelsPackagingText').textContent = `ฉลาก: ${labels} | หมวดหมู่: ${categories} | บรรจุภัณฑ์: ${packaging}`;
+
+      // แสดงผลสกัดชั้นที่ 2 (Secondary Fallback) หากมีการใช้งาน
+      const fallbackBox = document.getElementById('fallbackExtractedBox');
+      const fallbackText = document.getElementById('fallbackExtractedText');
+      const fallbackBadge = document.getElementById('fallbackBadge');
+
+      if (metrics.fallbackNotes.length > 0) {
+        fallbackBox.classList.remove('hidden');
+        fallbackText.textContent = metrics.fallbackNotes.join(' • ');
+        fallbackBadge.textContent = `สกัดเสริมจากฉลาก ${metrics.fallbackNotes.length} รายการ`;
+        fallbackBadge.className = 'text-xs font-semibold px-3 py-1 rounded-full bg-amber-100 text-amber-800 border border-amber-200';
+      } else {
+        fallbackBox.classList.add('hidden');
+        fallbackBadge.textContent = 'อ่านจาก Nutriments หลักครบถ้วน';
+        fallbackBadge.className = 'text-xs font-medium px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200';
+      }
+
+      // 6) Raw JSON
+      renderRawJson();
+      lucide.createIcons();
+    }
+
+    /**
+     * ตัดสินใจท่าทางและคำแนะนำของ "น้องกู๊ดดี้" จากผลลัพธ์ของสินค้าที่สแกน
+     */
+    function updateGoodyVerdictFromMetrics(productName, nutriGrade, metrics) {
+      let highList = [];
+      let medList = [];
+
+      TRAFFIC_CONFIG.forEach((cfg) => {
+        const val100 = metrics[cfg.key]['100g'];
+        const level = evaluateTrafficLevel(val100, cfg.lowMax, cfg.highMin);
+        if (level === 'high') highList.push(cfg.title.split(' ')[0]);
+        if (level === 'medium') medList.push(cfg.title.split(' ')[0]);
+      });
+
+      if (highList.length > 0 || nutriGrade === 'D' || nutriGrade === 'E') {
+        const reason = highList.length > 0
+          ? `มี <strong>${highList.join(', ')}</strong> อยู่ในเกณฑ์สูง`
+          : `ได้คะแนน Nutri-Score ระดับ <strong>${nutriGrade}</strong>`;
+        updateNongGoody(
+          'warning',
+          `ตรวจพบข้อมูลของ <strong>“${productName}”</strong> แล้วครับ! ขนมนี้${reason} น้องกู๊ดดี้แนะนำให้แบ่งทานในปริมาณพอเหมาะ หรือนานๆ ทานทีเพื่อสุขภาพที่ดีนะครับ!`
+        );
+      } else if (medList.length > 0 || nutriGrade === 'C') {
+        updateNongGoody(
+          'moderate',
+          `ตรวจพบข้อมูลของ <strong>“${productName}”</strong> แล้วครับ! สารอาหารส่วนใหญ่อยู่ในระดับปานกลาง สามารถทานเป็นของว่างได้ แต่อย่าลืมแบ่งสัดส่วนให้พอดีและดื่มน้ำเปล่าตามนะครับ!`
+        );
+      } else {
+        updateNongGoody(
+          'healthy',
+          `ว้าว! <strong>“${productName}”</strong> ผ่านเกณฑ์น่ารักมาก น้ำตาล ไขมัน และเกลืออยู่ในระดับต่ำ ทานได้อย่างสบายใจเลยครับ!`
+        );
+      }
+    }
+
+    /**
+     * อัปเดตตัวเลขพลังงาน การ์ดไฟจราจร 4 หมวด และสารอาหารหลักเพิ่มเติมตามฐานที่เลือก (100g / serving)
+     */
+    function renderNutritionValuesByBasis(product, metrics) {
+      const is100g = activeBasis === '100g';
+      const basisLabel = is100g ? 'ต่อ 100 กรัม (_100g)' : 'ต่อหนึ่งหน่วยบริโภค (_serving)';
+
+      // 1) กล่องพลังงาน
+      const kcal = is100g ? metrics.energy.kcal100 : metrics.energy.kcalServ;
+      const kj = is100g ? metrics.energy.kj100 : metrics.energy.kjServ;
+      document.getElementById('energyBasisSubtitle').textContent = `แสดงค่าพลังงาน${basisLabel} (ทศนิยม 3 ตำแหน่ง)`;
+      document.getElementById('energyKcalVal').textContent = formatDecimal3(kcal);
+      document.getElementById('energyKjVal').textContent = formatDecimal3(kj);
+
+      const energySourceBadge = document.getElementById('energySourceBadge');
+      if (metrics.energy.source === 'fallback') {
+        energySourceBadge.textContent = 'สกัดจากข้อความฉลาก';
+        energySourceBadge.className = 'text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800';
+      } else {
+        energySourceBadge.textContent = 'ฐานข้อมูล Nutriments';
+        energySourceBadge.className = 'text-[11px] font-medium px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700';
+      }
+
+      // 2) การ์ดไฟจราจร 4 หมวดหลัก
+      const grid = document.getElementById('trafficCardsGrid');
+      grid.innerHTML = TRAFFIC_CONFIG.map((cfg) => {
+        const metricObj = metrics[cfg.key];
+        const displayVal = is100g ? metricObj['100g'] : metricObj['serving'];
+        const val100ForLevel = metricObj['100g']; // ประเมินสีไฟจราจรจากค่าต่อ 100g เสมอ
+        const level = evaluateTrafficLevel(val100ForLevel, cfg.lowMax, cfg.highMin);
+        const src = is100g ? metricObj.source100 : metricObj.sourceServ;
+
+        const levelMeta = {
+          low: {
+            label: '🟢 ต่ำ (Low)',
+            cardBorder: 'border-emerald-200/90',
+            badgeClass: 'bg-emerald-100 text-emerald-800 border-emerald-200',
+            barColor: 'bg-emerald-500',
+            barWidth: '28%'
+          },
+          medium: {
+            label: '🟡 ปานกลาง (Moderate)',
+            cardBorder: 'border-amber-200/90',
+            badgeClass: 'bg-amber-100 text-amber-800 border-amber-200',
+            barColor: 'bg-amber-400',
+            barWidth: '62%'
+          },
+          high: {
+            label: '🔴 สูง (High)',
+            cardBorder: 'border-rose-200/90',
+            badgeClass: 'bg-rose-100 text-rose-800 border-rose-200',
+            barColor: 'bg-rose-500',
+            barWidth: '95%'
+          },
+          unknown: {
+            label: '⚪ ไม่ระบุข้อมูล',
+            cardBorder: 'border-slate-200/90',
+            badgeClass: 'bg-slate-100 text-slate-600 border-slate-200',
+            barColor: 'bg-slate-300',
+            barWidth: '0%'
+          }
+        }[level];
+
+        const sourceTag = src === 'fallback'
+          ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-medium">สกัดจากฉลาก</span>'
+          : (src === 'nutriments'
+              ? '<span class="text-[10px] px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 font-medium">Nutriments</span>'
+              : '');
+
+        return `
+          <div class="glass-card rounded-3xl p-4 sm:p-5 border-2 ${levelMeta.cardBorder} shadow-soft flex flex-col justify-between gap-3 transition hover:shadow-md">
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex items-center gap-3">
+                <div class="w-14 h-14 rounded-2xl bg-white border border-slate-100 p-1.5 shrink-0 shadow-inner">
+                  ${getNutrientMascotSVG(cfg.key === 'saturated-fat' ? 'satfat' : (cfg.key === 'sugars' ? 'sugar' : cfg.key))}
+                </div>
+                <div>
+                  <div class="flex items-center gap-1.5 flex-wrap">
+                    <span class="text-xs font-bold text-slate-700">${cfg.mascotName}</span>
+                    ${sourceTag}
+                  </div>
+                  <h4 class="font-bold text-slate-800 text-sm sm:text-base">${cfg.title}</h4>
+                  <span class="inline-block mt-1 text-[11px] font-bold px-2.5 py-0.5 rounded-full border ${levelMeta.badgeClass}">
+                    ${levelMeta.label}
+                  </span>
+                </div>
+              </div>
+
+              <div class="text-right shrink-0">
+                <span class="font-mono-num text-xl sm:text-2xl font-bold text-slate-800">${formatDecimal3(displayVal)}</span>
+                <span class="block text-xs text-slate-400">กรัม (g)</span>
+              </div>
+            </div>
+
+            <!-- แถบระดับไฟจราจร -->
+            <div class="space-y-1">
+              <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                <div class="h-full ${levelMeta.barColor} rounded-full transition-all duration-500" style="width: ${levelMeta.barWidth}"></div>
+              </div>
+              <div class="flex justify-between text-[10px] text-slate-400 font-mono-num">
+                <span>เกณฑ์ต่ำ ≤ ${cfg.lowMax.toFixed(3)}g</span>
+                <span>เกณฑ์สูง > ${cfg.highMin.toFixed(3)}g</span>
+              </div>
+            </div>
+
+            <!-- คำพูดอธิบายจากตัวการ์ตูนประจำหมวด -->
+            <div class="rounded-2xl bg-white/85 border border-slate-100 px-3.5 py-2.5 text-xs text-slate-600 leading-relaxed">
+              💬 <strong>${cfg.mascotName}:</strong> “${cfg.comments[level]}”
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      // 3) ข้อมูลโภชนาการหลักเพิ่มเติม (คาร์บ โปรตีน ใยอาหาร โซเดียม)
+      document.getElementById('coreNutrientsBasisLabel').textContent = basisLabel;
+
+      const carbVal = is100g ? metrics.carbohydrates['100g'] : metrics.carbohydrates['serving'];
+      const proteinVal = is100g ? metrics.proteins['100g'] : metrics.proteins['serving'];
+      const fiberVal = is100g ? metrics.fiber['100g'] : metrics.fiber['serving'];
+      const sodiumVal = is100g ? metrics.sodium['100g'] : metrics.sodium['serving'];
+
+      document.getElementById('carbVal').textContent = formatDecimal3(carbVal);
+      document.getElementById('carbSource').textContent = (is100g ? metrics.carbohydrates.source100 : metrics.carbohydrates.sourceServ) === 'fallback' ? 'สกัดจากฉลาก' : 'Nutriments';
+
+      document.getElementById('proteinVal').textContent = formatDecimal3(proteinVal);
+      document.getElementById('proteinSource').textContent = (is100g ? metrics.proteins.source100 : metrics.proteins.sourceServ) === 'fallback' ? 'สกัดจากฉลาก' : 'Nutriments';
+
+      document.getElementById('fiberVal').textContent = formatDecimal3(fiberVal);
+      document.getElementById('fiberSource').textContent = (is100g ? metrics.fiber.source100 : metrics.fiber.sourceServ) === 'fallback' ? 'สกัดจากฉลาก' : 'Nutriments';
+
+      document.getElementById('sodiumVal').textContent = formatDecimal3(sodiumVal);
+      const sodiumMg = sodiumVal !== null && !Number.isNaN(sodiumVal) ? (sodiumVal * 1000).toFixed(3) : '-';
+      document.getElementById('sodiumMgHint').textContent = `≈ ${sodiumMg} mg`;
+    }
+
+    /**
+     * แสดงตาราง Nutrition Facts ทั้งหมด (ทศนิยม 3 ตำแหน่ง)
+     */
+    function renderAllNutrientsTable(nutriments) {
+      const tbody = document.getElementById('allNutrientsTableBody');
+      const baseKeysSet = new Set();
+
+      Object.keys(nutriments).forEach((k) => {
+        if (k.endsWith('_100g')) {
+          baseKeysSet.add(k.replace(/_100g$/, ''));
+        } else if (k.endsWith('_serving')) {
+          baseKeysSet.add(k.replace(/_serving$/, ''));
+        }
+      });
+
+      const thaiLabels = {
+        'energy-kcal': 'พลังงาน (Energy kcal)',
+        'energy': 'พลังงาน (Energy kJ)',
+        'fat': 'ไขมันทั้งหมด (Fat)',
+        'saturated-fat': 'ไขมันอิ่มตัว (Saturated Fat)',
+        'trans-fat': 'ไขมันทรานส์ (Trans Fat)',
+        'cholesterol': 'คอเลสเตอรอล (Cholesterol)',
+        'carbohydrates': 'คาร์โบไฮเดรต (Carbohydrates)',
+        'sugars': 'น้ำตาล (Sugars)',
+        'fiber': 'ใยอาหาร (Fiber)',
+        'proteins': 'โปรตีน (Proteins)',
+        'salt': 'เกลือ (Salt)',
+        'sodium': 'โซเดียม (Sodium)',
+        'calcium': 'แคลเซียม (Calcium)',
+        'iron': 'เหล็ก (Iron)',
+        'vitamin-a': 'วิตามิน เอ (Vitamin A)',
+        'vitamin-c': 'วิตามิน ซี (Vitamin C)',
+        'fruits-vegetables-nuts-estimate-from-ingredients': 'สัดส่วนผัก/ผลไม้/ถั่วโดยประมาณ'
+      };
+
+      const sortedKeys = Array.from(baseKeysSet).sort();
+
+      if (sortedKeys.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="4" class="py-6 text-center text-slate-400">
+              ไม่พบรายการตารางสารอาหารย่อยในฐานข้อมูลของสินค้านี้
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      tbody.innerHTML = sortedKeys.map((baseKey) => {
+        const val100 = nutriments[`${baseKey}_100g`];
+        const valServ = nutriments[`${baseKey}_serving`];
+        const unit = nutriments[`${baseKey}_unit`] || (baseKey === 'energy-kcal' ? 'kcal' : (baseKey === 'energy' ? 'kJ' : 'g'));
+        const displayName = thaiLabels[baseKey] || baseKey;
+
+        return `
+          <tr class="hover:bg-emerald-50/40 transition">
+            <td class="py-2.5 px-4 font-medium text-slate-700">${displayName}</td>
+            <td class="py-2.5 px-4 text-right font-mono-num text-slate-800">${formatDecimal3(val100)}</td>
+            <td class="py-2.5 px-4 text-right font-mono-num text-slate-600">${formatDecimal3(valServ)}</td>
+            <td class="py-2.5 px-4 text-center font-mono-num text-xs text-slate-500">${unit}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // =========================================================================
+    // 9. จัดการ Raw JSON และฟังก์ชันคัดลอก (ใช้ document.execCommand('copy'))
+    // =========================================================================
+    function setJsonViewMode(mode) {
+      activeJsonMode = mode;
+      const btnNutr = document.getElementById('btnJsonNutriments');
+      const btnFull = document.getElementById('btnJsonFull');
+
+      if (mode === 'nutriments') {
+        btnNutr.className = 'px-3 py-1 rounded-lg text-xs font-semibold bg-white text-slate-800 shadow-sm transition';
+        btnFull.className = 'px-3 py-1 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-800 transition';
+      } else {
+        btnFull.className = 'px-3 py-1 rounded-lg text-xs font-semibold bg-white text-slate-800 shadow-sm transition';
+        btnNutr.className = 'px-3 py-1 rounded-lg text-xs font-semibold text-slate-600 hover:text-slate-800 transition';
+      }
+
+      renderRawJson();
+    }
+
+    function renderRawJson() {
+      const preEl = document.getElementById('rawJsonOutput');
+      if (!currentFullResponse) {
+        preEl.textContent = '{}';
+        return;
+      }
+
+      const targetObj = activeJsonMode === 'nutriments'
+        ? (currentProductData && currentProductData.nutriments ? currentProductData.nutriments : {})
+        : currentFullResponse;
+
+      preEl.textContent = JSON.stringify(targetObj, null, 2);
+    }
+
+    function copyTextFallbackSafe(text) {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+      textarea.select();
+      try {
+        document.execCommand('copy');
+        return true;
+      } catch (err) {
+        console.error('Copy command failed:', err);
+        return false;
+      } finally {
+        document.body.removeChild(textarea);
+      }
+    }
+
+    function copyRawJson() {
+      const jsonText = document.getElementById('rawJsonOutput').textContent;
+      if (copyTextFallbackSafe(jsonText)) {
+        showToast('คัดลอกข้อมูล JSON ลงคลิปบอร์ดเรียบร้อยแล้ว!', 'success');
+      } else {
+        showToast('ไม่สามารถคัดลอกอัตโนมัติได้ กรุณากดเลือกข้อความแล้วคัดลอกเอง', 'warning');
+      }
+    }
+
+    function copyCurrentUrl() {
+      if (copyTextFallbackSafe(window.location.href)) {
+        showToast('คัดลอกลิงก์เว็บไซต์แล้ว นำไปวางใน Chrome / Safari ได้เลย!', 'success');
+      }
+    }
+
+    // =========================================================================
+    // 10. ระบบแจ้งเตือน Toast แบบนุ่มนวล (ไม่ใช้ alert())
+    // =========================================================================
+    function showToast(message, type = 'success') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+
+      const styles = {
+        success: 'bg-emerald-600 text-white border-emerald-500',
+        warning: 'bg-amber-500 text-white border-amber-400',
+        error: 'bg-rose-600 text-white border-rose-500'
+      }[type] || 'bg-slate-800 text-white border-slate-700';
+
+      toast.className = `pointer-events-auto flex items-center gap-2.5 px-4 py-3 rounded-2xl shadow-lg border text-xs sm:text-sm font-medium transition-all duration-300 transform translate-y-2 opacity-0 ${styles}`;
+      toast.innerHTML = `<span>${message}</span>`;
+
+      container.appendChild(toast);
+
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('translate-y-2', 'opacity-0');
+        setTimeout(() => toast.remove(), 300);
+      }, 3200);
+    }
+  </script>
+</body>
+</html>
